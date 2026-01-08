@@ -12,11 +12,11 @@ const PORT = process.env.PORT || 5000;
 // =======================================================
 // MIDDLEWARE (MUST BE FIRST - BEFORE ANY ROUTES!)
 // =======================================================
+// Add CORS - PUT THIS BEFORE OTHER MIDDLEWARE
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
-  credentials: true,
+  origin: 'https://vertcorps-esmp-files.netlify.app',// Replace with your actual Netlify URL
+  credentials: true
 }));
-
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
