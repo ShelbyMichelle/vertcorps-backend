@@ -1,7 +1,7 @@
 const express = require("express");
 const bcrypt = require("bcryptjs");
 const router = express.Router();
-const db = require("../db"); // mysql connection
+const { User } = require("../models"); // Sequelize User model
 
 //  ADD USER
 router.post("/add-user", async (req, res) => {
@@ -12,35 +12,43 @@ router.post("/add-user", async (req, res) => {
   }
 
   try {
+    // Hash the password
     const hashed = await bcrypt.hash(password, 10);
 
-    db.query(
-      "INSERT INTO users (name, email, password, role) VALUES (?,?,?,?)",
-      [name, email, hashed, role],
-      (err, result) => {
-        if (err) {
-          console.error(err);
-          return res.status(500).json({ message: "User already exists or DB error" });
-        }
-
-        res.json({ success: true, message: "User created successfully" });
+    // Create user in PostgreSQL using Sequelize
+    const [user, created] = await User.findOrCreate({
+      where: { email }, // check if email already exists
+      defaults: {
+        name,
+        password: hashed,
+        role
       }
-    );
+    });
+
+    if (!created) {
+      return res.status(400).json({ message: "User already exists" });
+    }
+
+    res.json({ success: true, message: "User created successfully", user });
   } catch (e) {
+    console.error(e);
     res.status(500).json({ message: "Server error" });
   }
 });
 
-
 //  GET USERS
-router.get("/users", (req, res) => {
-  db.query(
-    "SELECT id, name, email, role FROM users ORDER BY created_at DESC",
-    (err, results) => {
-      if (err) return res.status(500).json({ error: err });
-      res.json(results);
-    }
-  )
-})
+router.get("/users", async (req, res) => {
+  try {
+    const users = await User.findAll({
+      attributes: ["id", "name", "email", "role"], // select specific columns
+      order: [["createdAt", "DESC"]]             // order by createdAt desc
+    });
+
+    res.json(users);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ message: "Server error" });
+  }
+});
 
 module.exports = router;

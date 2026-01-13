@@ -1,8 +1,10 @@
 // models/ESMP.js
-const { DataTypes } = require('sequelize');
-const sequelize = require('../config/database');
+const { Model, DataTypes } = require('sequelize');
+const sequelize = require('../database');
 
-const ESMP = sequelize.define('ESMP', {
+class ESMP extends Model {}
+
+ESMP.init({
   id: {
     type: DataTypes.INTEGER,
     primaryKey: true,
@@ -36,7 +38,6 @@ const ESMP = sequelize.define('ESMP', {
     type: DataTypes.DATE,
     allowNull: true
   },
-  // Review fields stored as JSON or separate columns
   reviewerName: {
     type: DataTypes.STRING(255),
     allowNull: true
@@ -61,7 +62,6 @@ const ESMP = sequelize.define('ESMP', {
     type: DataTypes.DATE,
     allowNull: true
   },
-  // Optional: File storage fields
   fileUrl: {
     type: DataTypes.STRING(500),
     allowNull: true
@@ -75,7 +75,9 @@ const ESMP = sequelize.define('ESMP', {
     allowNull: true
   }
 }, {
-  tableName: 'esmp_files',
+  sequelize,
+  modelName: 'ESMP',       // class name
+  tableName: 'esmp_files', // actual table in DB
   timestamps: true
 });
 

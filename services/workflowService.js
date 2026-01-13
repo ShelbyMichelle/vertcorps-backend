@@ -1,4 +1,4 @@
-const db = require("../db");     // your pool or ORM
+const db = require("../database");     // your pool or ORM
 const sendMail = require("../config/mailer");
 const templates = require("../utils/emailTemplates");
 

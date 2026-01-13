@@ -1,41 +1,39 @@
 const bcrypt = require("bcryptjs")
-const mysql = require("mysql2")
+const { User } = require("../models")
 
-const db = mysql.createConnection({
-  host: "localhost",
-  user: "root",
-  password: "",
-  database: "vertcorps"
-})
+exports.addUser = async (req, res) => {
+  const { name, email, password, role } = req.body
 
-async function createUser() {
+  if (!name || !email || !password || !role) {
+    return res.status(400).json({ success: false, message: "All fields required" })
+  }
 
-  const hash = await bcrypt.hash("123456", 10)
+  try {
+    const existing = await User.findOne({ where: { email } })
+    if (existing) {
+      return res.status(409).json({ success: false, message: "Email already exists" })
+    }
 
-  // ✅ Admin user (your original user)
-  db.query(
-    "INSERT INTO users (name, email, password, role) VALUES (?,?,?,?)",
-    [
-      "Malumbo Thindwa",
-      "admin@vertcorps.com",
-      hash,
-      "admin"
-    ],
-    () => console.log("✅ Admin user created")
-  )
+    const hashedPassword = await bcrypt.hash(password, 10)
 
-  // ✅ District EDO user (NEW)
-  db.query(
-    "INSERT INTO users (name, email, password, role) VALUES (?,?,?,?)",
-    [
-      "Ireen Yabunya",
-      "malumbothindwa81@gmail.com",
-      hash,
-      "district_EDO"
-    ],
-    () => console.log("✅ District EDO user created")
-  )
+    const user = await User.create({
+      name,
+      email: email.toLowerCase(),
+      password: hashedPassword,
+      role,
+    })
 
+    res.status(201).json({
+      success: true,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+    })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ success: false, message: "Server error" })
+  }
 }
-
-createUser()

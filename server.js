@@ -10,12 +10,14 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // =======================================================
-// MIDDLEWARE (MUST BE FIRST - BEFORE ANY ROUTES!)
+// MIDDLEWARE
 // =======================================================
-// Add CORS - PUT THIS BEFORE OTHER MIDDLEWARE
 app.use(cors({
-  origin: 'https://vertcorps-esmp-files.netlify.app',// Replace with your actual Netlify URL
-  credentials: true
+  origin: [
+    'http://localhost:3000', // add your local dev frontend
+    'https://vertcorps-esmp-files.netlify.app' // your deployed frontend
+  ],
+  credentials: true // if you are sending cookies
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -33,16 +35,17 @@ app.use('/uploads', express.static(uploadDir));
 // =======================================================
 // Sequelize
 // =======================================================
-const sequelize = require('./config/database');
+const sequelize = require('./database');
 const { User, EsmpDistrictUpload } = require('./models');
 
 // =======================================================
-// ROUTES (AFTER MIDDLEWARE!)
+// ROUTES
 // =======================================================
 const notificationRoutes = require('./routes/notificationRoutes');
 const authRoutes = require('./routes/authRoutes');
 const reviewerRoutes = require('./routes/reviewerRoutes');
 const esmpRoutes = require('./routes/esmpRoutes');
+const userRoutes = require('./routes/userRoutes');
 
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/auth', authRoutes);
@@ -51,10 +54,7 @@ app.use('/api/reviewer', reviewerRoutes);
 app.use('/api/statistics', require('./routes/statisticsRoutes'));
 app.use('/api/admin', require('./routes/adminRoutes'));
 app.use('/api/district/esmp', require('./routes/districtEsmpRoutes'));
-
-// Duplicate routes - you had these twice, remove them
-// app.use('/api/reviewers', reviewerRoutes); // REMOVE THIS
-// app.use('/api/esmp', esmpRoutes); // REMOVE THIS (already declared above)
+app.use('/api/users', userRoutes);
 
 // =======================================================
 // HEALTH CHECK
@@ -83,10 +83,6 @@ const upload = multer({
     cb(null, true);
   },
 });
-
-const userRoutes = require('./routes/userRoutes');
-app.use('/api/users', userRoutes);
-
 
 app.post('/api/esmp/upload', upload.array('files'), async (req, res) => {
   try {

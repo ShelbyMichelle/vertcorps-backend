@@ -1,15 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const multer = require("multer");
-const mysql = require("mysql2");
-
-// DB connection
-const db = mysql.createConnection({
-  host: "localhost",
-  user: "root",
-  password: "",
-  database: "vertcorps"
-});
+const { EsmpDistrictUpload } = require("../models"); // Sequelize model
 
 // Upload storage config
 const storage = multer.diskStorage({
@@ -21,9 +13,8 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 // ✅ POST UPLOAD & SAVE DATA INTO DB
-router.post("/upload", upload.array("files"), (req, res) => {
+router.post("/upload", upload.array("files"), async (req, res) => {
   try {
-
     const {
       esmp_id,
       district,
@@ -38,45 +29,32 @@ router.post("/upload", upload.array("files"), (req, res) => {
       return res.status(400).json({ error: "No files uploaded" });
     }
 
-    const sql = `
-    INSERT INTO esmp_district_uploads
-    (
-      esmp_id,
-      district,
-      subproject,
-      coordinates,
-      sector,
-      cycle,
-      funding_component,
-      file_name,
-      file_path
-    )
-    VALUES ?
-    `;
+    // Create multiple rows in PostgreSQL using Sequelize
+    const uploadPromises = req.files.map(file =>
+      EsmpDistrictUpload.create({
+        esmp_id,
+        district,
+        subproject,
+        coordinates,
+        sector,
+        cycle,
+        funding_component: funding,
+        file_name: file.originalname,
+        file_path: file.path
+      })
+    );
 
-    const values = req.files.map(file => [
-      esmp_id,
-      district,
-      subproject,
-      coordinates,
-      sector,
-      cycle,
-      funding,
-      file.originalname,
-      file.path
-    ]);
+    const uploadedFiles = await Promise.all(uploadPromises);
 
-    db.query(sql, [values], (err, result) => {
-      if (err) throw err;
-      res.json({
-        success: true,
-        insertedRows: result.affectedRows
-      });
+    res.json({
+      success: true,
+      insertedRows: uploadedFiles.length,
+      files: uploadedFiles
     });
 
   } catch (err) {
-    console.log(err);
-    res.status(500).json(err);
+    console.error(err);
+    res.status(500).json({ message: "Server error", error: err.message });
   }
 });
 
