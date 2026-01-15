@@ -3,20 +3,17 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
 exports.login = async (req, res) => {
-  const { email, password, role } = req.body;
+  const { email, password } = req.body;
 
-  // 1️⃣ Check input
-  if (!email || !password || !role) {
-    return res.status(400).json({ message: 'Email, password, and role are required' });
+  // 1️⃣ Validate input
+  if (!email || !password) {
+    return res.status(400).json({ message: 'Email and password are required' });
   }
 
   try {
-    // 2️⃣ Find user (PostgreSQL: case-insensitive email + exact role)
+    // 2️⃣ Find user by email ONLY
     const user = await User.findOne({
-      where: {
-        email: email.toLowerCase(),
-        role: role
-      }
+      where: { email: email.toLowerCase() }
     });
 
     if (!user) {
@@ -29,14 +26,14 @@ exports.login = async (req, res) => {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
-    // 4️⃣ Generate JWT token
+    // 4️⃣ Generate token using DB role
     const token = jwt.sign(
       { id: user.id, role: user.role },
       process.env.JWT_SECRET,
       { expiresIn: '1d' }
     );
 
-    // 5️⃣ Send response
+    // 5️⃣ Respond
     res.json({
       token,
       user: {
@@ -44,7 +41,7 @@ exports.login = async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role
-      },
+      }
     });
 
   } catch (err) {
