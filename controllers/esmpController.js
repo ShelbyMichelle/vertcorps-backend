@@ -24,6 +24,7 @@ exports.uploadEsmp = async (req, res) => {
       return res.status(400).json({ success: false, message: 'File is required' });
     }
 
+    // 1️⃣ Create ESMP with status "Submitted"
     const esmp = await EsmpDistrictUpload.create({
       esmp_id,
       project_name,
@@ -38,6 +39,28 @@ exports.uploadEsmp = async (req, res) => {
       file_name: req.file.originalname,
       file_path: req.file.path,
     });
+
+    // 2️⃣ Notify all admins
+    const admins = await User.findAll({ where: { role: 'admin' } });
+    for (let admin of admins) {
+      await createNotification({
+        user_id: admin.id,
+        title: 'New ESMP Submitted',
+        message: `ESMP ${esmp.esmp_id} has been submitted by ${submitted_by}.`,
+        type: 'NEW_SUBMISSION',
+      });
+    }
+
+    // 3️⃣ Notify all reviewers
+    const reviewers = await User.findAll({ where: { role: 'reviewer' } });
+    for (let reviewer of reviewers) {
+      await createNotification({
+        user_id: reviewer.id,
+        title: 'New ESMP Available for Review',
+        message: `ESMP ${esmp.esmp_id} has been submitted and is ready for review.`,
+        type: 'NEW_REVIEW',
+      });
+    }
 
     res.json({ success: true, data: esmp });
   } catch (err) {

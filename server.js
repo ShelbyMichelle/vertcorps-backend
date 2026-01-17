@@ -43,14 +43,15 @@ const { User, EsmpDistrictUpload } = require('./models');
 // =======================================================
 const notificationRoutes = require('./routes/notificationRoutes');
 const authRoutes = require('./routes/authRoutes');
-const reviewerRoutes = require('./routes/reviewerRoutes');
+// const reviewerRoutes = require('./routes/reviewerRoutes');
 const esmpRoutes = require('./routes/esmpRoutes');
 const userRoutes = require('./routes/userRoutes');
 
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/auth', authRoutes);
-app.use('/api/esmp', esmpRoutes);
-app.use('/api/reviewer', reviewerRoutes);
+app.use("/api", esmpRoutes)
+// app.use('/api/esmp', esmpRoutes);
+// app.use('/api/reviewer', reviewerRoutes);
 app.use('/api/statistics', require('./routes/statisticsRoutes'));
 app.use('/api/admin', require('./routes/adminRoutes'));
 app.use('/api/district/esmp', require('./routes/districtEsmpRoutes'));

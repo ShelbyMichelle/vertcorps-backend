@@ -1,36 +1,36 @@
-// routes/reviewerRoutes.js
-const express = require('express');
-const router = express.Router();
+// // routes/reviewerRoutes.js
+// const express = require('express');
+// const router = express.Router();
 
-const reviewerController = require('../controllers/reviewerController');
-
-
-const auth = require('../middleware/auth');
-const role = require('../middleware/role');
-
-// GET /api/reviewers - get all reviewers
-router.get('/', reviewerController.getAllReviewers);
+// const reviewerController = require('../controllers/reviewerController');
 
 
-router.get(
-  '/pending',
-  auth,
-  role('reviewer'),
-  reviewerController.getPendingReviews
-);
+// const auth = require('../middleware/auth');
+// const role = require('../middleware/role');
 
-router.get(
-  '/reviewed',
-  auth,
-  role('reviewer'),
-  reviewerController.getReviewedSubmissions
-);
+// // GET /api/reviewers - get all reviewers
+// router.get('/', reviewerController.getAllReviewers);
 
-router.post(
-  '/submit-review',
-  auth,
-  role('reviewer'),
-  reviewerController.submitReview
-);
 
-module.exports = router;
+// router.get(
+//   '/pending',
+//   auth,
+//   role('reviewer'),
+//   reviewerController.getPendingReviews
+// );
+
+// router.get(
+//   '/reviewed',
+//   auth,
+//   role('reviewer'),
+//   reviewerController.getReviewedSubmissions
+// );
+
+// router.post(
+//   '/submit-review',
+//   auth,
+//   role('reviewer'),
+//   reviewerController.submitReview
+// );
+
+// module.exports = router;
