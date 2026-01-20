@@ -1,3 +1,5 @@
+
+// models/EsmpDistrictUpload.js
 module.exports = (sequelize, DataTypes) => {
   const EsmpDistrictUpload = sequelize.define('EsmpDistrictUpload', {
     id: {
@@ -6,7 +8,7 @@ module.exports = (sequelize, DataTypes) => {
       primaryKey: true
     },
     esmp_id: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.STRING, // Changed from INTEGER to STRING for generated IDs like "ESMP-123456-789"
       allowNull: true
     },
     project_name: DataTypes.STRING,
@@ -17,8 +19,8 @@ module.exports = (sequelize, DataTypes) => {
     cycle: DataTypes.STRING,
     funding_component: DataTypes.STRING,
     status: {
-      type: DataTypes.ENUM('Pending','Approved','Rejected','Overdue','Returned'),
-      defaultValue: 'Pending'
+      type: DataTypes.ENUM('Submitted', 'Pending', 'Approved', 'Rejected', 'Overdue', 'Returned'),
+      defaultValue: 'Submitted' // Changed from 'Pending' to 'Submitted'
     },
     submitted_by: {
       type: DataTypes.INTEGER,

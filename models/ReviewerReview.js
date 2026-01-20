@@ -1,3 +1,5 @@
+
+// models/ReviewerReview.js (if you need it)
 module.exports = (sequelize, DataTypes) => {
   const ReviewerReview = sequelize.define('ReviewerReview', {
     id: {
@@ -7,20 +9,24 @@ module.exports = (sequelize, DataTypes) => {
     },
     assignment_id: {
       type: DataTypes.INTEGER,
+      allowNull: false,
       references: {
-        model: 'reviewerassignments',
+        model: 'reviewer_assignments',
         key: 'id'
       },
       onUpdate: 'CASCADE',
-      onDelete: 'SET NULL'
+      onDelete: 'CASCADE'
     },
-    comments: DataTypes.TEXT,
     recommendation: {
-      type: DataTypes.ENUM('Approve','Return','Reject'),
+      type: DataTypes.STRING,
       allowNull: false
+    },
+    comments: {
+      type: DataTypes.TEXT,
+      allowNull: true
     }
   }, {
-    tableName: 'reviewerreviews',
+    tableName: 'reviewer_reviews',
     timestamps: true
   });
 

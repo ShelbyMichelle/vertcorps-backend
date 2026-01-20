@@ -1,129 +1,116 @@
-// // controllers/reviewerController.js
+// ============================================
+// controllers/reviewerController.js (CREATE THIS FILE)
+// ============================================
+const path = require('path');
+const fs = require('fs');
+const { EsmpDistrictUpload, User } = require('../models');
 
-// // Get all reviewers
-// exports.getAllReviewers = async (req, res) => {
-//   try {
-//     // Assuming your User model has a 'role' field and reviewers have role='reviewer'
-//     const reviewers = await User.findAll({
-//       where: { role: 'reviewer' },
-//       attributes: ['id', 'fullname', 'email', 'role'],
-//     });
+// Get all submitted ESMPs (for download list)
+exports.getSubmittedEsmps = async (req, res) => {
+  try {
+    const esmps = await EsmpDistrictUpload.findAll({
+      where: {
+        status: ['Submitted', 'Pending', 'Approved', 'Returned']
+      },
+      order: [['createdAt', 'DESC']],
+      include: [
+        {
+          model: User,
+          attributes: ['id', 'name', 'email', 'district']
+        }
+      ]
+    });
 
-//     res.json(reviewers);
-//   } catch (error) {
-//     console.error('Error fetching reviewers:', error);
-//     res.status(500).json({ message: 'Server error fetching reviewers' });
-//   }
-// };
+    res.json({ 
+      success: true, 
+      data: esmps 
+    });
+  } catch (err) {
+    console.error('❌ Error fetching ESMPs:', err);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to fetch ESMPs',
+      error: process.env.NODE_ENV === 'development' ? err.message : 'Server error'
+    });
+  }
+};
 
+// Download a specific ESMP file
+exports.downloadEsmpFile = async (req, res) => {
+  try {
+    const { id } = req.params;
 
+    // Find the ESMP
+    const esmp = await EsmpDistrictUpload.findByPk(id);
 
+    if (!esmp) {
+      return res.status(404).json({
+        success: false,
+        message: 'ESMP not found'
+      });
+    }
 
-// ///
-// const {
-//   ReviewerAssignment,
-//   ReviewerReview,
-//   EsmpDistrictUpload,
-//   User,
-// } = require('../models');
+    // Check if file exists
+    const filePath = path.resolve(esmp.file_path);
+    
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({
+        success: false,
+        message: 'File not found on server'
+      });
+    }
 
-// const { createNotification } = require('./notificationController');
+    // Set headers for download
+    res.setHeader('Content-Type', 'application/octet-stream');
+    res.setHeader('Content-Disposition', `attachment; filename="${esmp.file_name}"`);
 
+    // Stream the file
+    const fileStream = fs.createReadStream(filePath);
+    fileStream.pipe(res);
 
-// // ==========================
-// // GET PENDING REVIEWS
-// // ==========================
-// exports.getPendingReviews = async (req, res) => {
-//   try {
-//     const reviewerId = req.user.id;
+  } catch (err) {
+    console.error('❌ Error downloading file:', err);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to download file',
+      error: process.env.NODE_ENV === 'development' ? err.message : 'Server error'
+    });
+  }
+};
 
-//     const assignments = await ReviewerAssignment.findAll({
-//       where: { reviewer_id: reviewerId, status: 'Assigned' },
-//       include: [
-//         { model: EsmpDistrictUpload, as: 'esmp' }
-//       ],
-//       order: [['deadline', 'ASC']],
-//     });
+// Get ESMP details (for viewing before download)
+exports.getEsmpDetails = async (req, res) => {
+  try {
+    const { id } = req.params;
 
-//     res.json({ success: true, data: assignments });
-//   } catch (err) {
-//     res.status(500).json({ success: false, message: 'Server error' });
-//   }
-// };
+    const esmp = await EsmpDistrictUpload.findByPk(id, {
+      include: [
+        {
+          model: User,
+          attributes: ['id', 'name', 'email', 'district']
+        }
+      ]
+    });
 
+    if (!esmp) {
+      return res.status(404).json({
+        success: false,
+        message: 'ESMP not found'
+      });
+    }
 
-// // ==========================
-// // GET COMPLETED REVIEWS
-// // ==========================
-// exports.getReviewedSubmissions = async (req, res) => {
-//   try {
-//     const reviewerId = req.user.id;
+    res.json({ 
+      success: true, 
+      data: esmp 
+    });
+  } catch (err) {
+    console.error('❌ Error fetching ESMP details:', err);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to fetch ESMP details',
+      error: process.env.NODE_ENV === 'development' ? err.message : 'Server error'
+    });
+  }
+};
 
-//     const assignments = await ReviewerAssignment.findAll({
-//       where: { reviewer_id: reviewerId, status: 'Completed' },
-//       include: [
-//         { model: EsmpDistrictUpload, as: 'esmp' },
-//         { model: ReviewerReview, as: 'review' }
-//       ],
-//     });
-
-//     res.json({ success: true, data: assignments });
-//   } catch (err) {
-//     res.status(500).json({ success: false, message: 'Server error' });
-//   }
-// };
-
-
-// // ==========================
-// // SUBMIT REVIEW
-// // ==========================
-// exports.submitReview = async (req, res) => {
-//   try {
-//     const reviewerId = req.user.id;
-//     const { assignment_id, comments, recommendation } = req.body;
-
-//     const assignment = await ReviewerAssignment.findOne({
-//       where: { id: assignment_id, reviewer_id: reviewerId },
-//       include: [{ model: EsmpDistrictUpload, as: 'esmp' }],
-//     });
-
-//     if (!assignment) {
-//       return res.status(404).json({ success: false, message: 'Assignment not found' });
-//     }
-
-//     // Save review
-//     await ReviewerReview.create({
-//       assignment_id,
-//       comments,
-//       recommendation,
-//     });
-
-//     // Update assignment
-//     assignment.status = 'Completed';
-//     await assignment.save();
-
-//     // Update ESMP status
-//     assignment.esmp.status =
-//       recommendation === 'Approve' ? 'Approved' :
-//       recommendation === 'Return' ? 'Returned' : 'Rejected';
-
-//     await assignment.esmp.save();
-
-//     // Notify District EDO
-//     await createNotification({
-//       user_id: assignment.esmp.submitted_by,
-//       title: 'ESMP Reviewed',
-//       message: `Your ESMP ${assignment.esmp.esmp_id} has been reviewed.`,
-//       type:
-//         recommendation === 'Approve'
-//           ? 'ESMP_APPROVED'
-//           : recommendation === 'Return'
-//           ? 'ESMP_RETURNED'
-//           : 'ESMP_REJECTED',
-//     });
-
-//     res.json({ success: true, message: 'Review submitted successfully' });
-//   } catch (err) {
-//     res.status(500).json({ success: false, message: 'Server error' });
-//   }
-// };
+module.exports = exports;

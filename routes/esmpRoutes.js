@@ -1,29 +1,85 @@
+// routes/esmpRoutes.js
 const express = require('express');
 const router = express.Router();
 const esmpController = require('../controllers/esmpController');
-const upload = require('../middleware/upload'); // multer
+const auth = require('../middleware/auth');
+const role = require('../middleware/role');
+const upload = require('../middleware/upload');
 
-// router.post('/upload', upload.single('file'), esmpController.uploadEsmp);
-// router.get('/', esmpController.getAllEsmps);
-
-// Get ESMPs by status
-// router.get("/esmps/status/:status", esmpController.getEsmpsByStatus)
-// router.get('/status/:status', esmpController.getEsmpsByStatus);
-// router.put('/:esmpId/assign', esmpController.assignReviewer);
-// router.put('/:esmpId/review', esmpController.reviewAction);
-
-
+// ==============================
+// ADMIN & REVIEWER ROUTES
+// ==============================
 
 /**
- * Reviewer & Admin
  * Get ALL ESMPs
+ * Accessible by: Admin & Reviewer
  */
-router.get("/esmps", esmpController.getAllEsmps);
+router.get(
+  '/esmps',
+  auth,
+  esmpController.getAllEsmps
+);
 
 /**
- * Admin
  * Get ESMPs by status
+ * Accessible by: Admin & Reviewer
  */
-router.get("/esmps/status/:status", esmpController.getEsmpsByStatus);
+router.get(
+  '/esmps/status/:status',
+  auth,
+  esmpController.getEsmpsByStatus
+);
+
+/**
+ * Get Admin Dashboard Statistics
+ * Accessible by: Admin only
+ */
+router.get(
+  '/admin/dashboard-stats',
+  auth,
+  role('admin'),
+  esmpController.getAdminDashboardStats
+);
+
+/**
+ * Get Reviewer Dashboard Statistics
+ * Accessible by: Reviewer only
+ */
+router.get(
+  '/reviewer/dashboard-stats',
+  auth,
+  role('reviewer'),
+  esmpController.getReviewerDashboardStats
+);
+
+/**
+ * Assign reviewer to ESMP
+ * Accessible by: Admin only
+ */
+router.put(
+  '/esmps/:esmpId/assign',
+  auth,
+  role('admin'),
+  esmpController.assignReviewer
+);
+
+/**
+ * Submit review for ESMP
+ * Accessible by: Reviewer only
+ */
+router.put(
+  '/esmps/review/:esmpId',
+  auth,
+  role('reviewer'),
+  upload.single('file'),
+  esmpController.reviewAction
+);
+
+router.get(
+  '/users/reviewers',
+  auth,
+  role('admin'),
+  esmpController.getReviewers
+);
 
 module.exports = router;

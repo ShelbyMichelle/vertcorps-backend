@@ -1,25 +1,33 @@
+// models/User.js
 module.exports = (sequelize, DataTypes) => {
   const User = sequelize.define('User', {
     id: {
       type: DataTypes.INTEGER,
-      primaryKey: true,
-      autoIncrement: true
+      autoIncrement: true,
+      primaryKey: true
     },
     name: {
-      type: DataTypes.STRING(255),
-      allowNull: true
+      type: DataTypes.STRING,
+      allowNull: false
     },
     email: {
-      type: DataTypes.STRING(255),
-      allowNull: true,
-      unique: true
+      type: DataTypes.STRING,
+      allowNull: false,
+      unique: true,
+      validate: {
+        isEmail: true
+      }
     },
     password: {
-      type: DataTypes.STRING(255),
-      allowNull: true
+      type: DataTypes.STRING,
+      allowNull: false
     },
     role: {
-      type: DataTypes.ENUM('admin', 'district', 'reviewer'),
+      type: DataTypes.ENUM('admin', 'district_EDO', 'reviewer'),
+      allowNull: false
+    },
+    district: {
+      type: DataTypes.STRING,
       allowNull: true
     }
   }, {
@@ -27,12 +35,25 @@ module.exports = (sequelize, DataTypes) => {
     timestamps: true
   });
 
+  // ✅ Associations
   User.associate = (models) => {
-    User.hasMany(models.EsmpDistrictUpload, { foreignKey: 'submitted_by' });
-    User.hasMany(models.Notification, { foreignKey: 'user_id' });
-    User.hasMany(models.Review, { foreignKey: 'reviewer_id' });
-    User.hasMany(models.ReviewerAssignment, { foreignKey: 'reviewer_id' });
+    User.hasMany(models.Notification, {
+      foreignKey: 'user_id',
+      onDelete: 'CASCADE'
+    });
+
+    User.hasMany(models.EsmpDistrictUpload, {
+      foreignKey: 'submitted_by'
+    });
+
+    User.hasMany(models.Review, {
+      foreignKey: 'reviewer_id'
+    });
+
+    User.hasMany(models.ReviewerAssignment, {
+      foreignKey: 'reviewer_id'
+    });
   };
 
-  return User;
+  return User; // 🔴 REQUIRED
 };

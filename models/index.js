@@ -1,38 +1,54 @@
-const { Sequelize, DataTypes } = require('sequelize');
-const sequelize = require('../database'); // your database.js
+// models/index.js
+const fs = require('fs');
+const path = require('path');
+const Sequelize = require('sequelize');
+const basename = path.basename(__filename);
+const db = {};
 
-const User = require('./User')(sequelize, DataTypes);
-const EsmpDistrictUpload = require('./EsmpDistrictUpload')(sequelize, DataTypes);
-const Notification = require('./Notification')(sequelize, DataTypes);
-const Review = require('./Review')(sequelize, DataTypes);
-const ReviewerAssignment = require('./ReviewerAssignment')(sequelize, DataTypes);
-const ReviewerReview = require('./ReviewerReview')(sequelize, DataTypes);
+// Direct database connection using environment variables
+const sequelize = new Sequelize(
+  process.env.DB_NAME,
+  process.env.DB_USER,
+  process.env.DB_PASSWORD,
+  {
+    host: process.env.DB_HOST || 'localhost',
+    port: process.env.DB_PORT || 5432,
+    dialect: 'postgres',
+    logging: false, // Set to console.log to see SQL queries
+    pool: {
+      max: 5,
+      min: 0,
+      acquire: 30000,
+      idle: 10000
+    }
+  }
+);
 
-// Associations
-User.hasMany(EsmpDistrictUpload, { foreignKey: 'submitted_by' });
-EsmpDistrictUpload.belongsTo(User, { foreignKey: 'submitted_by' });
+// Auto-load all model files
+fs
+  .readdirSync(__dirname)
+  .filter(file => {
+    return (
+      file.indexOf('.') !== 0 && 
+      file !== basename && 
+      file.slice(-3) === '.js' &&
+      file !== 'index.js' // Make sure we don't try to load index.js itself
+    );
+  })
+  .forEach(file => {
+    const model = require(path.join(__dirname, file))(sequelize, Sequelize.DataTypes);
+    db[model.name] = model;
+  });
 
-User.hasMany(Notification, { foreignKey: 'user_id' });
-Notification.belongsTo(User, { foreignKey: 'user_id' });
 
-User.hasMany(Review, { foreignKey: 'reviewer_id' });
-Review.belongsTo(User, { foreignKey: 'reviewer_id' });
+// Run associations for all models that have them
+Object.keys(db).forEach(modelName => {
+  if (db[modelName].associate) {
+    db[modelName].associate(db);
+  }
+});
 
-EsmpDistrictUpload.hasMany(Review, { foreignKey: 'esmp_id' });
-Review.belongsTo(EsmpDistrictUpload, { foreignKey: 'esmp_id' });
+db.sequelize = sequelize;
+db.Sequelize = Sequelize;
 
-ReviewerAssignment.belongsTo(User, { foreignKey: 'reviewer_id', as: 'reviewer' });
-ReviewerAssignment.belongsTo(EsmpDistrictUpload, { foreignKey: 'esmp_id', as: 'esmp' });
-ReviewerAssignment.hasOne(ReviewerReview, { foreignKey: 'assignment_id', as: 'review' });
-
-ReviewerReview.belongsTo(ReviewerAssignment, { foreignKey: 'assignment_id', as: 'assignment' });
-
-module.exports = {
-  sequelize,
-  User,
-  EsmpDistrictUpload,
-  Notification,
-  Review,
-  ReviewerAssignment,
-  ReviewerReview
-};
+module.exports = db;

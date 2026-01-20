@@ -54,8 +54,14 @@ app.use("/api", esmpRoutes)
 // app.use('/api/reviewer', reviewerRoutes);
 app.use('/api/statistics', require('./routes/statisticsRoutes'));
 app.use('/api/admin', require('./routes/adminRoutes'));
-app.use('/api/district/esmp', require('./routes/districtEsmpRoutes'));
+// app.use('/api/district/esmp', require('./routes/districtEsmpRoutes'));
+app.use('/api/district', require('./routes/districtEsmpRoutes'));
 app.use('/api/users', userRoutes);
+const reviewerRoutes = require('./routes/reviewerRoutes');
+app.use('/api/reviewer', reviewerRoutes);
+app.use('/api', userRoutes);
+
+
 
 // =======================================================
 // HEALTH CHECK
@@ -149,6 +155,8 @@ app.use((err, req, res, next) => {
   });
 });
 
+
+
 // =======================================================
 // START SERVER
 // =======================================================
@@ -163,3 +171,4 @@ sequelize
   .catch((err) => {
     console.error('❌ Database sync failed:', err);
   });
+

@@ -1,3 +1,5 @@
+
+// models/ReviewerAssignment.js
 module.exports = (sequelize, DataTypes) => {
   const ReviewerAssignment = sequelize.define('ReviewerAssignment', {
     id: {
@@ -7,36 +9,47 @@ module.exports = (sequelize, DataTypes) => {
     },
     esmp_id: {
       type: DataTypes.INTEGER,
+      allowNull: false,
       references: {
         model: 'esmpdistrictuploads',
         key: 'id'
       },
       onUpdate: 'CASCADE',
-      onDelete: 'SET NULL'
+      onDelete: 'CASCADE'
     },
     reviewer_id: {
       type: DataTypes.INTEGER,
+      allowNull: false,
       references: {
         model: 'users',
         key: 'id'
       },
       onUpdate: 'CASCADE',
-      onDelete: 'SET NULL'
+      onDelete: 'CASCADE'
     },
-    deadline: DataTypes.DATE,
-    status: {
-      type: DataTypes.ENUM('Assigned','Completed','Overdue'),
-      defaultValue: 'Assigned'
+    assigned_by: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: 'users',
+        key: 'id'
+      },
+      onUpdate: 'CASCADE',
+      onDelete: 'CASCADE'
+    },
+    assigned_at: {
+      type: DataTypes.DATE,
+      defaultValue: DataTypes.NOW
     }
   }, {
-    tableName: 'reviewerassignments',
+    tableName: 'reviewer_assignments',
     timestamps: true
   });
 
   ReviewerAssignment.associate = (models) => {
-    ReviewerAssignment.hasOne(models.ReviewerReview, { foreignKey: 'assignment_id', as: 'review' });
-    ReviewerAssignment.belongsTo(models.User, { foreignKey: 'reviewer_id', as: 'reviewer' });
-    ReviewerAssignment.belongsTo(models.EsmpDistrictUpload, { foreignKey: 'esmp_id', as: 'esmp' });
+    ReviewerAssignment.belongsTo(models.EsmpDistrictUpload, { foreignKey: 'esmp_id' });
+    ReviewerAssignment.belongsTo(models.User, { foreignKey: 'reviewer_id', as: 'Reviewer' });
+    ReviewerAssignment.belongsTo(models.User, { foreignKey: 'assigned_by', as: 'AssignedBy' });
   };
 
   return ReviewerAssignment;

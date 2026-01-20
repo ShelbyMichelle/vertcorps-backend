@@ -1,36 +1,35 @@
-// // routes/reviewerRoutes.js
-// const express = require('express');
-// const router = express.Router();
 
-// const reviewerController = require('../controllers/reviewerController');
+// ============================================
+// routes/reviewerRoutes.js (CREATE THIS FILE)
+// ============================================
+const express = require('express');
+const router = express.Router();
+const reviewerController = require('../controllers/reviewerController');
+const auth = require('../middleware/auth');
+const role = require('../middleware/role');
 
+// Get all submitted ESMPs (for reviewer to see)
+router.get(
+  '/esmps',
+  auth,
+  role('reviewer'),
+  reviewerController.getSubmittedEsmps
+);
 
-// const auth = require('../middleware/auth');
-// const role = require('../middleware/role');
+// Get specific ESMP details
+router.get(
+  '/esmps/:id',
+  auth,
+  role('reviewer'),
+  reviewerController.getEsmpDetails
+);
 
-// // GET /api/reviewers - get all reviewers
-// router.get('/', reviewerController.getAllReviewers);
+// Download ESMP file
+router.get(
+  '/esmps/:id/download',
+  auth,
+  role('reviewer'),
+  reviewerController.downloadEsmpFile
+);
 
-
-// router.get(
-//   '/pending',
-//   auth,
-//   role('reviewer'),
-//   reviewerController.getPendingReviews
-// );
-
-// router.get(
-//   '/reviewed',
-//   auth,
-//   role('reviewer'),
-//   reviewerController.getReviewedSubmissions
-// );
-
-// router.post(
-//   '/submit-review',
-//   auth,
-//   role('reviewer'),
-//   reviewerController.submitReview
-// );
-
-// module.exports = router;
+module.exports = router;

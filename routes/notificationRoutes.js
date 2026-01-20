@@ -1,10 +1,26 @@
 const express = require('express');
 const router = express.Router();
-const notificationController = require('../controllers/notificationController');
-const auth = require('../middleware/auth'); // JWT middleware
+const auth = require('../middleware/auth');
 
-router.get('/', auth, notificationController.getMyNotifications);
-router.put('/:id/read', auth, notificationController.markAsRead);
-router.put('/read-all', auth, notificationController.markAllAsRead);
+const {
+  getMyNotifications,
+  markAsRead,
+  markAllAsRead
+} = require('../controllers/notificationController');
+
+/**
+ * GET /api/notifications
+ */
+router.get('/', auth, getMyNotifications);
+
+/**
+ * PUT /api/notifications/:id/read
+ */
+router.put('/:id/read', auth, markAsRead);
+
+/**
+ * PUT /api/notifications/read-all
+ */
+router.put('/read-all', auth, markAllAsRead);
 
 module.exports = router;

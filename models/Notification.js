@@ -1,3 +1,4 @@
+// models/Notification.js
 module.exports = (sequelize, DataTypes) => {
   const Notification = sequelize.define('Notification', {
     id: {
@@ -7,13 +8,7 @@ module.exports = (sequelize, DataTypes) => {
     },
     user_id: {
       type: DataTypes.INTEGER,
-      allowNull: true,
-      references: {
-        model: 'users',
-        key: 'id'
-      },
-      onUpdate: 'CASCADE',
-      onDelete: 'SET NULL'
+      allowNull: false
     },
     title: {
       type: DataTypes.STRING,
@@ -21,17 +16,6 @@ module.exports = (sequelize, DataTypes) => {
     },
     message: {
       type: DataTypes.TEXT,
-      allowNull: false
-    },
-    type: {
-      type: DataTypes.ENUM(
-        'ESMP_SUBMITTED',
-        'REVIEW_ASSIGNED',
-        'ESMP_APPROVED',
-        'ESMP_RETURNED',
-        'ESMP_REJECTED',
-        'ESMP_OVERDUE'
-      ),
       allowNull: false
     },
     is_read: {
@@ -43,8 +27,12 @@ module.exports = (sequelize, DataTypes) => {
     timestamps: true
   });
 
+  // ✅ Associations ONLY here
   Notification.associate = (models) => {
-    Notification.belongsTo(models.User, { foreignKey: 'user_id', as: 'user' });
+    Notification.belongsTo(models.User, {
+      foreignKey: 'user_id',
+      onDelete: 'CASCADE'
+    });
   };
 
   return Notification;
