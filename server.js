@@ -15,7 +15,7 @@ const PORT = process.env.PORT || 5000;
 app.use(cors({
   origin: [
     'http://localhost:3000', // add your local dev frontend
-    'https://vertcorps-esmp-files.netlify.app' // your deployed frontend
+    'vertcorps-official-site.netlify.app' // your deployed frontend
   ],
   credentials: true // if you are sending cookies
 }));
