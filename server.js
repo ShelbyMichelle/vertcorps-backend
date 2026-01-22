@@ -3,22 +3,35 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
-const bcrypt = require('bcryptjs');
 const multer = require('multer');
+const sequelize = require('./database');
+const { User, EsmpDistrictUpload } = require('./models');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
 // =======================================================
+// CORS CONFIGURATION
+// =======================================================
+const allowedOrigins = [
+  'http://localhost:3000',                        // local dev
+  'https://vertcorps-official-site.netlify.app'   // deployed frontend
+];
+
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true); // allow non-browser tools like Postman
+    if (allowedOrigins.indexOf(origin) === -1) {
+      return callback(new Error('CORS policy: Access denied from this origin'), false);
+    }
+    return callback(null, true);
+  },
+  credentials: true, // if sending cookies
+}));
+
+// =======================================================
 // MIDDLEWARE
 // =======================================================
-app.use(cors({
-  origin: [
-    'http://localhost:3000', // add your local dev frontend
-    'vertcorps-official-site.netlify.app' // your deployed frontend
-  ],
-  credentials: true // if you are sending cookies
-}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -29,39 +42,28 @@ const uploadDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
-
 app.use('/uploads', express.static(uploadDir));
-
-// =======================================================
-// Sequelize
-// =======================================================
-const sequelize = require('./database');
-const { User, EsmpDistrictUpload } = require('./models');
 
 // =======================================================
 // ROUTES
 // =======================================================
 const notificationRoutes = require('./routes/notificationRoutes');
 const authRoutes = require('./routes/authRoutes');
-// const reviewerRoutes = require('./routes/reviewerRoutes');
 const esmpRoutes = require('./routes/esmpRoutes');
 const userRoutes = require('./routes/userRoutes');
+const reviewerRoutes = require('./routes/reviewerRoutes');
+const statisticsRoutes = require('./routes/statisticsRoutes');
+const adminRoutes = require('./routes/adminRoutes');
+const districtEsmpRoutes = require('./routes/districtEsmpRoutes');
 
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/auth', authRoutes);
-app.use("/api", esmpRoutes)
-// app.use('/api/esmp', esmpRoutes);
-// app.use('/api/reviewer', reviewerRoutes);
-app.use('/api/statistics', require('./routes/statisticsRoutes'));
-app.use('/api/admin', require('./routes/adminRoutes'));
-// app.use('/api/district/esmp', require('./routes/districtEsmpRoutes'));
-app.use('/api/district', require('./routes/districtEsmpRoutes'));
+app.use('/api/esmp', esmpRoutes); // optional: namespace routes
 app.use('/api/users', userRoutes);
-const reviewerRoutes = require('./routes/reviewerRoutes');
 app.use('/api/reviewer', reviewerRoutes);
-app.use('/api', userRoutes);
-
-
+app.use('/api/statistics', statisticsRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/district', districtEsmpRoutes);
 
 // =======================================================
 // HEALTH CHECK
@@ -93,15 +95,7 @@ const upload = multer({
 
 app.post('/api/esmp/upload', upload.array('files'), async (req, res) => {
   try {
-    const {
-      esmp_id,
-      district,
-      subproject,
-      coordinates,
-      sector,
-      cycle,
-      funding_component,
-    } = req.body;
+    const { esmp_id, district, subproject, coordinates, sector, cycle, funding_component } = req.body;
 
     if (!req.files || !req.files.length) {
       return res.status(400).json({ success: false, message: 'No files uploaded' });
@@ -129,22 +123,6 @@ app.post('/api/esmp/upload', upload.array('files'), async (req, res) => {
 });
 
 // =======================================================
-// FETCH ALL ESMPs
-// =======================================================
-app.get('/api/esmp/list', async (req, res) => {
-  try {
-    const esmpList = await EsmpDistrictUpload.findAll({
-      order: [['createdAt', 'DESC']],
-    });
-
-    res.json({ success: true, data: esmpList });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false });
-  }
-});
-
-// =======================================================
 // ERROR HANDLER
 // =======================================================
 app.use((err, req, res, next) => {
@@ -155,13 +133,10 @@ app.use((err, req, res, next) => {
   });
 });
 
-
-
 // =======================================================
 // START SERVER
 // =======================================================
-sequelize
-  .sync({ alter: true })
+sequelize.sync({ alter: true })
   .then(() => {
     console.log('✅ Database synced');
     app.listen(PORT, () => {
@@ -171,4 +146,3 @@ sequelize
   .catch((err) => {
     console.error('❌ Database sync failed:', err);
   });
-
