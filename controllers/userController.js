@@ -1,6 +1,3 @@
-// ============================================
-// controllers/userController.js (CREATE THIS FILE)
-// ============================================
 const { User } = require('../models');
 const bcrypt = require('bcryptjs');
 
@@ -169,5 +166,34 @@ exports.deleteUser = async (req, res) => {
     });
   }
 };
+// Reset password
+exports.resetPassword = async (req, res) => {
+  try {
+    const { newPassword, confirmPassword } = req.body;
+
+    if (!newPassword || !confirmPassword) {
+      return res.status(400).json({ success: false, message: "Both fields are required" });
+    }
+
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({ success: false, message: "Passwords do not match" });
+    }
+
+    const user = await User.findByPk(req.user.id); // user ID from token
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    const bcrypt = require("bcryptjs");
+    user.password = await bcrypt.hash(newPassword, 10);
+    await user.save();
+
+    res.json({ success: true, message: "Password reset successfully" });
+  } catch (err) {
+    console.error("Reset password error:", err);
+    res.status(500).json({ success: false, message: "Failed to reset password" });
+  }
+};
+
 
 module.exports = exports;

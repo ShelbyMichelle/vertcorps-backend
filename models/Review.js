@@ -1,59 +1,35 @@
-// models/Review.js
 module.exports = (sequelize, DataTypes) => {
-  const Review = sequelize.define('Review', {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true
-    },
+  const Review = sequelize.define("Review", {
     esmp_id: {
       type: DataTypes.INTEGER,
-      allowNull: false,
-      references: {
-        model: 'esmpdistrictuploads',
-        key: 'id'
-      },
-      onUpdate: 'CASCADE',
-      onDelete: 'CASCADE'
+      allowNull: true,
     },
     reviewer_id: {
       type: DataTypes.INTEGER,
-      allowNull: false,
-      references: {
-        model: 'users',
-        key: 'id'
-      },
-      onUpdate: 'CASCADE',
-      onDelete: 'CASCADE'
+      allowNull: true,
     },
     status: {
-      type: DataTypes.ENUM('Approved', 'Returned', 'Rejected'),
-      allowNull: false
+      type: DataTypes.ENUM(
+        "Approved",
+        "Approved with Conditions",
+        "Returned for Revision",
+        "Rejected"
+      ),
+      allowNull: false,
     },
-    comments: {
+    comment: {
       type: DataTypes.TEXT,
-      allowNull: true
     },
-    annotated_file_path: {
-      type: DataTypes.STRING,
-      allowNull: true
-    },
-    annotated_file_name: {
-      type: DataTypes.STRING,
-      allowNull: true
-    },
-    reviewed_at: {
-      type: DataTypes.DATE,
-      allowNull: true
-    }
-  }, {
-    tableName: 'reviews',
-    timestamps: true
   });
 
   Review.associate = (models) => {
-    Review.belongsTo(models.EsmpDistrictUpload, { foreignKey: 'esmp_id' });
-    Review.belongsTo(models.User, { foreignKey: 'reviewer_id', as: 'Reviewer' });
+    Review.belongsTo(models.EsmpDistrictUpload, {
+      foreignKey: "esmp_id",
+    });
+
+    Review.belongsTo(models.User, {
+      foreignKey: "reviewer_id",
+    });
   };
 
   return Review;
