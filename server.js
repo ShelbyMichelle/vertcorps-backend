@@ -4,8 +4,7 @@ const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
-const sequelize = require('./database');
-const { User, EsmpDistrictUpload } = require('./models');
+const { sequelize, User, EsmpDistrictUpload } = require('./models');  // ✅ All from models
 
 const app = express();
 const PORT = process.env.PORT || 5000;
