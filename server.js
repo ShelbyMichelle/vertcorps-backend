@@ -14,18 +14,23 @@ const PORT = process.env.PORT || 5000;
 // =======================================================
 const allowedOrigins = [
   'http://localhost:3000',                        // local dev
-  'https://vertcorps-official-site.netlify.app'   // deployed frontend
+  'https://vertcorps-official-site.netlify.app',  // deployed frontend
+  'http://localhost:3001',                        // if you use different port
 ];
 
 app.use(cors({
   origin: function (origin, callback) {
-    if (!origin) return callback(null, true); // allow non-browser tools like Postman
-    if (allowedOrigins.indexOf(origin) === -1) {
-      return callback(new Error('CORS policy: Access denied from this origin'), false);
+    // Allow requests with no origin (like mobile apps, Postman, or same-origin)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.log('❌ CORS blocked origin:', origin); // Add logging
+      callback(new Error('CORS policy: Access denied from this origin'), false);
     }
-    return callback(null, true);
   },
-  credentials: true, // if sending cookies
+  credentials: true,
 }));
 
 // =======================================================
@@ -132,8 +137,6 @@ app.use((err, req, res, next) => {
   });
 });
 
-
-
 // =======================================================
 // START SERVER
 // =======================================================
@@ -200,13 +203,3 @@ sequelize.sync({ alter: true })
   });
 
 
-// sequelize.sync({ alter: true })
-//   .then(() => {
-//     console.log('✅ Database synced');
-//     app.listen(PORT, () => {
-//       console.log(`🚀 Server running on port ${PORT}`);
-//     });
-//   })
-//   .catch((err) => {
-//     console.error('❌ Database sync failed:', err);
-//   });

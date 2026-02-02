@@ -15,7 +15,20 @@ const upload = require('../middleware/upload');
  * Accessible by: Admin & Reviewer
  */
 router.get(
+  '/list',  // ✅ Changed from '/esmps' to '/list'
+  auth,
+  esmpController.getAllEsmps
+);
+
+// OR keep both routes if other parts of your app use /esmps
+router.get(
   '/esmps',
+  auth,
+  esmpController.getAllEsmps
+);
+
+router.get(
+  '/list',  // Add this as an alias
   auth,
   esmpController.getAllEsmps
 );
@@ -25,7 +38,7 @@ router.get(
  * Accessible by: Admin & Reviewer
  */
 router.get(
-  '/esmps/status/:status',
+  '/status/:status',  // ✅ Changed from '/esmps/status/:status'
   auth,
   esmpController.getEsmpsByStatus
 );
@@ -57,7 +70,7 @@ router.get(
  * Accessible by: Admin only
  */
 router.put(
-  '/esmps/:esmpId/assign',
+  '/:esmpId/assign',  // ✅ Changed from '/esmps/:esmpId/assign'
   auth,
   role('admin'),
   esmpController.assignReviewer
@@ -68,7 +81,7 @@ router.put(
  * Accessible by: Reviewer only
  */
 router.put(
-  '/esmps/review/:esmpId',
+  '/review/:esmpId',  // ✅ Changed from '/esmps/review/:esmpId'
   auth,
   role('reviewer'),
   upload.single('file'),
@@ -76,7 +89,7 @@ router.put(
 );
 
 router.get(
-  '/users/reviewers',
+  '/reviewers',  // ✅ Changed from '/users/reviewers'
   auth,
   role('admin'),
   esmpController.getReviewers
