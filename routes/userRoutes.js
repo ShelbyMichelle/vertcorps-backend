@@ -4,12 +4,22 @@ const userController = require('../controllers/userController');
 const auth = require('../middleware/auth');
 const role = require('../middleware/role');
 
-// All routes require admin role
-router.get('/users', auth, role('admin'), userController.getAllUsers);
-router.post('/users/add', auth, role('admin'), userController.addUser);
-router.put('/users/:id/role', auth, role('admin'), userController.updateUserRole);
-router.delete('/users/:id', auth, role('admin'), userController.deleteUser);
-router.put("/users/reset-password", auth, userController.resetPassword);
+// All routes are already prefixed with /api/users from server.js
+// So these paths are relative to that base
 
+// GET /api/users
+router.get('/', auth, role('admin'), userController.getAllUsers);
+
+// POST /api/users/add
+router.post('/add', auth, role('admin'), userController.addUser);
+
+// PUT /api/users/:id/role
+router.put('/:id/role', auth, role('admin'), userController.updateUserRole);
+
+// DELETE /api/users/:id
+router.delete('/:id', auth, role('admin'), userController.deleteUser);
+
+// PUT /api/users/reset-password
+router.put('/reset-password', auth, userController.resetPassword);
 
 module.exports = router;
