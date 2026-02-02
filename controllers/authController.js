@@ -1,24 +1,32 @@
+const db = require('../models');
+const User = db.User;
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+
 exports.login = async (req, res) => {
   const { email, password } = req.body;
 
-  console.log('🔍 Login attempt:', { email });
+  console.log('🔍 Login attempt for:', email);
 
   // 1️⃣ Validate input
   if (!email || !password) {
+    console.log('❌ Missing email or password');
     return res.status(400).json({ message: 'Email and password are required' });
   }
 
   try {
-    console.log('📊 Attempting to find user in database...');
+    console.log('📊 Searching for user in database...');
+    console.log('User model available:', !!User);
     
     // 2️⃣ Find user by email ONLY
     const user = await User.findOne({
       where: { email: email.toLowerCase() }
     });
 
-    console.log('👤 User found:', user ? 'YES' : 'NO');
+    console.log('👤 User found:', user ? `YES (${user.email})` : 'NO');
 
     if (!user) {
+      console.log('❌ User not found');
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
@@ -30,6 +38,7 @@ exports.login = async (req, res) => {
     console.log('🔑 Password match:', isMatch);
     
     if (!isMatch) {
+      console.log('❌ Password mismatch');
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
@@ -56,11 +65,9 @@ exports.login = async (req, res) => {
     });
 
   } catch (err) {
-    console.error('❌ LOGIN ERROR:', err);
-    console.error('Error details:', {
-      message: err.message,
-      stack: err.stack
-    });
+    console.error('❌ LOGIN ERROR DETAILS:');
+    console.error('Error message:', err.message);
+    console.error('Error stack:', err.stack);
     res.status(500).json({ message: 'Server error' });
   }
 };
