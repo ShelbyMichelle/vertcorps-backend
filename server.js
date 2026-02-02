@@ -132,12 +132,65 @@ app.use((err, req, res, next) => {
   });
 });
 
+
+
 // =======================================================
 // START SERVER
 // =======================================================
 sequelize.sync({ alter: true })
-  .then(() => {
+  .then(async () => {
     console.log('✅ Database synced');
+    
+    // Auto-create default users if none exist
+    const userCount = await User.count();
+    console.log(`👥 Users in database: ${userCount}`);
+    
+    if (userCount === 0) {
+      console.log('🔧 No users found. Creating default users...');
+      
+      const bcrypt = require('bcryptjs');
+      const hashedPassword = await bcrypt.hash('password123', 10);
+      
+      await User.bulkCreate([
+        {
+          name: 'Admin User',
+          email: 'admin@vertcorps.com',
+          password: hashedPassword,
+          role: 'admin',
+          district: null
+        },
+        {
+          name: 'District EDO Lilongwe',
+          email: 'edo.lilongwe@vertcorps.com',
+          password: hashedPassword,
+          role: 'district_EDO',
+          district: 'Lilongwe'
+        },
+        {
+          name: 'District EDO Blantyre',
+          email: 'edo.blantyre@vertcorps.com',
+          password: hashedPassword,
+          role: 'district_EDO',
+          district: 'Blantyre'
+        },
+        {
+          name: 'Reviewer User',
+          email: 'reviewer@vertcorps.com',
+          password: hashedPassword,
+          role: 'reviewer',
+          district: null
+        }
+      ]);
+      
+      console.log('✅ Default users created!');
+      console.log('   📧 admin@vertcorps.com / password123');
+      console.log('   📧 edo.lilongwe@vertcorps.com / password123');
+      console.log('   📧 edo.blantyre@vertcorps.com / password123');
+      console.log('   📧 reviewer@vertcorps.com / password123');
+    } else {
+      console.log('✅ Users already exist, skipping creation');
+    }
+    
     app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
     });
@@ -145,3 +198,15 @@ sequelize.sync({ alter: true })
   .catch((err) => {
     console.error('❌ Database sync failed:', err);
   });
+
+
+// sequelize.sync({ alter: true })
+//   .then(() => {
+//     console.log('✅ Database synced');
+//     app.listen(PORT, () => {
+//       console.log(`🚀 Server running on port ${PORT}`);
+//     });
+//   })
+//   .catch((err) => {
+//     console.error('❌ Database sync failed:', err);
+//   });
