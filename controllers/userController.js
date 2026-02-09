@@ -1,3 +1,5 @@
+//controllers/userController.js
+
 const db = require('../models');
 const User = db.User;
 const bcrypt = require('bcryptjs');
@@ -168,33 +170,70 @@ exports.deleteUser = async (req, res) => {
   }
 };
 // Reset password
+// Reset password
 exports.resetPassword = async (req, res) => {
   try {
-    const { newPassword, confirmPassword } = req.body;
+    const { currentPassword, newPassword, confirmPassword } = req.body;
+    const userId = req.user.id; // From auth middleware
 
-    if (!newPassword || !confirmPassword) {
-      return res.status(400).json({ success: false, message: "Both fields are required" });
+    // Validation
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'All fields are required' 
+      });
     }
 
     if (newPassword !== confirmPassword) {
-      return res.status(400).json({ success: false, message: "Passwords do not match" });
+      return res.status(400).json({ 
+        success: false, 
+        message: 'New passwords do not match' 
+      });
     }
 
-    const user = await User.findByPk(req.user.id); // user ID from token
+    if (newPassword.length < 6) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Password must be at least 6 characters' 
+      });
+    }
+
+    // Find user (using the User already imported at the top)
+    const user = await User.findByPk(userId);
     if (!user) {
-      return res.status(404).json({ success: false, message: "User not found" });
+      return res.status(404).json({ 
+        success: false, 
+        message: 'User not found' 
+      });
     }
 
-    const bcrypt = require("bcryptjs");
-    user.password = await bcrypt.hash(newPassword, 10);
+    // Verify current password
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ 
+        success: false, 
+        message: 'Current password is incorrect' 
+      });
+    }
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    
+    // Update password
+    user.password = hashedPassword;
     await user.save();
 
-    res.json({ success: true, message: "Password reset successfully" });
+    res.json({ 
+      success: true, 
+      message: 'Password reset successfully' 
+    });
   } catch (err) {
-    console.error("Reset password error:", err);
-    res.status(500).json({ success: false, message: "Failed to reset password" });
+    console.error('Reset password error:', err);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to reset password' 
+    });
   }
 };
-
-
+// Don't forget to export it at the bottom of the file
 module.exports = exports;
