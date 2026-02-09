@@ -13,9 +13,12 @@ const PORT = process.env.PORT || 5000;
 // CORS CONFIGURATION
 // =======================================================
 const allowedOrigins = [
-  'http://localhost:3000',                        // local dev
+  'http://localhost:3000',                        // local frontend
+  'http://localhost:3001',                        // alternative local port
+  'http://localhost:5000',                        // local backend port
+  'http://localhost:5173',                        // Vite dev server
   'https://vertcorps-official-site.netlify.app',  // deployed frontend
-  'http://localhost:3001',                        // if you use different port
+  'https://vertcorps-backend-2.onrender.com',     // deployed backend
 ];
 
 app.use(cors({
@@ -26,13 +29,14 @@ app.use(cors({
     if (allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
-      console.log('❌ CORS blocked origin:', origin); // Add logging
+      console.log('❌ CORS blocked origin:', origin);
       callback(new Error('CORS policy: Access denied from this origin'), false);
     }
   },
   credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],  // Add this
+  allowedHeaders: ['Content-Type', 'Authorization'],              // Add this
 }));
-
 // =======================================================
 // MIDDLEWARE
 // =======================================================
