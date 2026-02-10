@@ -1,5 +1,5 @@
 // ============================================
-// controllers/reviewerController.js (CREATE THIS FILE)
+// controllers/reviewerController.js 
 // ============================================
 const path = require('path');
 const fs = require('fs');

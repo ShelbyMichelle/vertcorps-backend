@@ -9,23 +9,21 @@ const {
 // ==============================
 // ASSIGN ESMP TO REVIEWER
 // ==============================
+// ✅ CORRECT - assignReviewer function
 exports.assignReviewer = async (req, res) => {
   try {
     const { esmp_id, reviewer_id } = req.body;
 
-    // Check ESMP exists
     const esmp = await EsmpDistrictUpload.findByPk(esmp_id);
     if (!esmp) {
       return res.status(404).json({ success: false, message: 'ESMP not found' });
     }
 
-    // Check reviewer exists
     const reviewer = await User.findByPk(reviewer_id);
     if (!reviewer || reviewer.role !== 'reviewer') {
       return res.status(400).json({ success: false, message: 'Invalid reviewer' });
     }
 
-    // Prevent double assignment
     const existing = await ReviewerAssignment.findOne({
       where: { esmp_id }
     });
@@ -37,17 +35,18 @@ exports.assignReviewer = async (req, res) => {
       });
     }
 
-    // Assign reviewer
     const assignment = await ReviewerAssignment.create({
       esmp_id,
       reviewer_id,
       assigned_by: req.user.id
     });
 
-    // Update ESMP status
-    await esmp.update({ status: 'Pending Review' });
+    // ✅ THIS IS THE KEY CHANGE - Update the ESMP record with reviewer_id
+    await esmp.update({ 
+      reviewer_id: reviewer_id,  // ← Add reviewer_id to the ESMP record
+      status: 'Pending'           // ← Change status to 'Pending'
+    });
 
-    // (Optional) create notification
     await Notification.create({
       user_id: reviewer_id,
       message: 'A new ESMP has been assigned to you'
@@ -64,7 +63,6 @@ exports.assignReviewer = async (req, res) => {
     res.status(500).json({ success: false, message: 'Assignment failed' });
   }
 };
-
 
 // ==============================
 // CHANGE ESMP STATUS
@@ -88,6 +86,7 @@ exports.updateEsmpStatus = async (req, res) => {
       admin_comments: comments || null,
       reviewed_at: new Date()
     });
+   
 
     // Notify district user
     await Notification.create({
