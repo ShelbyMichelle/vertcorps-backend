@@ -12,7 +12,7 @@ exports.getSubmittedEsmps = async (req, res) => {
     // Get all ESMPs with reviewer_id field included
     const esmps = await EsmpDistrictUpload.findAll({
       where: {
-        status: ['Submitted', 'Pending', 'In Review', 'Approved', 'Returned']
+        status: ['Submitted', 'Pending', 'Pending', 'Approved', 'Returned']
       },
       // ✅ Explicitly include reviewer_id in the attributes
       attributes: [
