@@ -32,6 +32,11 @@ module.exports = (sequelize, DataTypes) => {
       onUpdate: 'CASCADE',
       onDelete: 'SET NULL'
     },
+    deadline: {
+  type: DataTypes.DATE,
+  allowNull: true,
+  defaultValue: null  // Optional: Ensures it's null by default
+},
 reviewer_id: {
   type: DataTypes.INTEGER,
   allowNull: true,

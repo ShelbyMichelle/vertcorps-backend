@@ -61,14 +61,14 @@ exports.submitEsmp = async (req, res) => {
     }));
 
     // Create notifications for all reviewers
-    const reviewerNotifications = reviewers.map(reviewer => ({
-      user_id: reviewer.id,
-      title: 'New ESMP Submitted',
-      message: `New ESMP "${project_name}" from ${district} district is pending your review.`
-    }));
+    // const reviewerNotifications = reviewers.map(reviewer => ({
+    //   user_id: reviewer.id,
+    //   title: 'New ESMP Submitted',
+    //   message: `New ESMP "${project_name}" from ${district} district is pending your review.`
+    // }));
 
     // Bulk create all notifications
-    await Notification.bulkCreate([...adminNotifications, ...reviewerNotifications]);
+    await Notification.bulkCreate([...adminNotifications]);
 
     res.status(201).json({
       success: true,
