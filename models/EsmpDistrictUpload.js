@@ -32,6 +32,14 @@ module.exports = (sequelize, DataTypes) => {
       onUpdate: 'CASCADE',
       onDelete: 'SET NULL'
     },
+reviewer_id: {
+  type: DataTypes.INTEGER,
+  allowNull: true,
+  references: {
+    model: 'users',
+    key: 'id'
+  }
+},
     file_name: DataTypes.STRING,
     file_path: DataTypes.STRING,
     cloudinary_id: {
@@ -47,6 +55,7 @@ module.exports = (sequelize, DataTypes) => {
     EsmpDistrictUpload.belongsTo(models.User, { foreignKey: 'submitted_by' });
     EsmpDistrictUpload.hasMany(models.Review, { foreignKey: 'esmp_id' });
     EsmpDistrictUpload.hasMany(models.ReviewerAssignment, { foreignKey: 'esmp_id' });
+    EsmpDistrictUpload.belongsTo(models.User, { foreignKey: 'reviewer_id', as: 'Reviewer' });
   };
 
   return EsmpDistrictUpload;

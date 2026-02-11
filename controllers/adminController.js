@@ -14,6 +14,8 @@ exports.assignReviewer = async (req, res) => {
   try {
     const { esmp_id, reviewer_id } = req.body;
 
+    console.log('📌 Assignment Request:', { esmp_id, reviewer_id }); // ← Add this
+
     const esmp = await EsmpDistrictUpload.findByPk(esmp_id);
     if (!esmp) {
       return res.status(404).json({ success: false, message: 'ESMP not found' });
@@ -41,11 +43,17 @@ exports.assignReviewer = async (req, res) => {
       assigned_by: req.user.id
     });
 
-    // ✅ THIS IS THE KEY CHANGE - Update the ESMP record with reviewer_id
+    // ✅ Update the ESMP record with reviewer_id
     await esmp.update({ 
-      reviewer_id: reviewer_id,  // ← Add reviewer_id to the ESMP record
-      status: 'Pending'           // ← Change status to 'Pending'
+      reviewer_id: reviewer_id,
+      status: 'Pending'
     });
+
+    console.log('✅ ESMP Updated:', { 
+      id: esmp.id, 
+      reviewer_id: esmp.reviewer_id, 
+      status: esmp.status 
+    }); // ← Add this
 
     await Notification.create({
       user_id: reviewer_id,
@@ -59,11 +67,10 @@ exports.assignReviewer = async (req, res) => {
     });
 
   } catch (err) {
-    console.error(err);
+    console.error('❌ Assignment Error:', err);
     res.status(500).json({ success: false, message: 'Assignment failed' });
   }
 };
-
 // ==============================
 // CHANGE ESMP STATUS
 // ==============================

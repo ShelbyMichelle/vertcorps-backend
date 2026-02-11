@@ -1,6 +1,6 @@
 require('dotenv').config();
 const bcrypt = require('bcryptjs');
-const { User, sequelize } = require('./models');
+const { User, sequelize } = require('../models');
 
 async function createTestUsers() {
   try {

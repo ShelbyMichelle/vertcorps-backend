@@ -107,10 +107,18 @@ exports.assignReviewer = async (req, res) => {
     }
 
     // Update ESMP status to Pending if it's Submitted
+    esmp.reviewer_id = reviewer_id;
     if (esmp.status === 'Submitted') {
       esmp.status = 'Pending';
       await esmp.save();
     }
+
+// If you want multiple reviewers per ESMP, uncomment and use ReviewerAssignment.create instead:
+// await ReviewerAssignment.create({
+//   esmp_id: esmpId,
+//   reviewer_id: reviewer_id,
+//   assigned_by: req.user.id
+// });
 
     // Create reviewer assignment (if you have ReviewerAssignment model)
     // await ReviewerAssignment.create({
@@ -356,7 +364,6 @@ exports.getReviewerDashboardStats = async (req, res) => {
   }
 };
 
-// Add this to controllers/esmpController.js OR create controllers/userController.js
 
 // Get all reviewers (for admin to assign)
 exports.getReviewers = async (req, res) => {
