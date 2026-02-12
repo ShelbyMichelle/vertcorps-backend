@@ -4,75 +4,102 @@ const {
   User,
   Notification
 } = require('../models');
+const { Op } = require('sequelize');
 
+// Helper for consistent responses (optional - you can keep your style)
+const successResponse = (res, data, message = 'Success', status = 200) => {
+  res.status(status).json({ success: true, message, data });
+};
+
+const errorResponse = (res, message, status = 500, error = null) => {
+  console.error(message, error || '');
+  res.status(status).json({ success: false, message, error: error?.message || error });
+};
 
 // ==============================
-// ASSIGN ESMP TO REVIEWER
+// ASSIGN ESMP TO REVIEWER (Admin only)
 // ==============================
-// ✅ CORRECT - assignReviewer function
 exports.assignReviewer = async (req, res) => {
   try {
-    const { esmp_id, reviewer_id } = req.body;
+    const { esmpId } = req.params;
+    const { reviewer_id, deadline } = req.body;
 
-    console.log('📌 Assignment Request:', { esmp_id, reviewer_id }); // ← Add this
+    if (!reviewer_id) {
+      return errorResponse(res, 'Reviewer ID is required', 400);
+    }
 
-    const esmp = await EsmpDistrictUpload.findByPk(esmp_id);
+    const esmp = await EsmpDistrictUpload.findByPk(esmpId);
     if (!esmp) {
-      return res.status(404).json({ success: false, message: 'ESMP not found' });
+      return errorResponse(res, 'ESMP not found', 404);
     }
 
-    const reviewer = await User.findByPk(reviewer_id);
-    if (!reviewer || reviewer.role !== 'reviewer') {
-      return res.status(400).json({ success: false, message: 'Invalid reviewer' });
-    }
-
-    const existing = await ReviewerAssignment.findOne({
-      where: { esmp_id }
+    const reviewer = await User.findOne({
+      where: { id: reviewer_id, role: 'reviewer' },
     });
-
-    if (existing) {
-      return res.status(400).json({
-        success: false,
-        message: 'ESMP already assigned'
-      });
+    if (!reviewer) {
+      return errorResponse(res, 'Invalid reviewer ID or user is not a reviewer', 400);
     }
 
-    const assignment = await ReviewerAssignment.create({
-      esmp_id,
+    // Optional: prevent re-assignment (if you don't want to allow changing reviewer)
+    if (esmp.reviewer_id) {
+      return errorResponse(res, 'ESMP is already assigned to a reviewer', 400);
+    }
+
+    // Update ESMP
+    esmp.reviewer_id = reviewer_id;
+
+    if (esmp.status === 'Submitted') {
+      esmp.status = 'Pending';
+    }
+
+    if (deadline) {
+      const deadlineDate = new Date(deadline);
+      if (isNaN(deadlineDate.getTime())) {
+        return errorResponse(res, 'Invalid deadline format', 400);
+      }
+      if (deadlineDate < new Date()) {
+        return errorResponse(res, 'Deadline cannot be in the past', 400);
+      }
+      esmp.deadline = deadlineDate;
+    }
+
+    await esmp.save();
+
+    // Optional: If you still want to use ReviewerAssignment model for audit/history
+    await ReviewerAssignment.create({
+      esmp_id: esmp.id,
       reviewer_id,
-      assigned_by: req.user.id
+      assigned_by: req.user.id,
     });
 
-    // ✅ Update the ESMP record with reviewer_id
-    await esmp.update({ 
-      reviewer_id: reviewer_id,
-      status: 'Pending'
-    });
-
-    console.log('✅ ESMP Updated:', { 
-      id: esmp.id, 
-      reviewer_id: esmp.reviewer_id, 
-      status: esmp.status 
-    }); // ← Add this
-
+    // Notify reviewer
     await Notification.create({
       user_id: reviewer_id,
-      message: 'A new ESMP has been assigned to you'
+      title: 'New ESMP Assigned',
+      message: `You have been assigned to review "${esmp.project_name}" from ${esmp.district}.`,
     });
 
-    res.json({
-      success: true,
-      message: 'Reviewer assigned successfully',
-      assignment
+    // Notify submitter (district EDO)
+    await Notification.create({
+      user_id: esmp.submitted_by,
+      title: 'ESMP Assigned for Review',
+      message: `Your ESMP "${esmp.project_name}" has been assigned to a reviewer.`,
     });
 
+    successResponse(res, {
+      esmpId: esmp.id,
+      reviewer_id,
+      reviewer_name: reviewer.name,
+      status: esmp.status,
+      deadline: esmp.deadline,
+    }, 'Reviewer assigned successfully');
   } catch (err) {
-    console.error('❌ Assignment Error:', err);
-    res.status(500).json({ success: false, message: 'Assignment failed' });
+    errorResponse(res, 'Failed to assign reviewer', 500, err);
   }
 };
+
 // ==============================
-// CHANGE ESMP STATUS
+// CHANGE ESMP STATUS (Admin override / bulk?)
 // ==============================
 exports.updateEsmpStatus = async (req, res) => {
   try {
@@ -80,40 +107,35 @@ exports.updateEsmpStatus = async (req, res) => {
 
     const allowed = ['Approved', 'Returned', 'Rejected'];
     if (!allowed.includes(status)) {
-      return res.status(400).json({ success: false, message: 'Invalid status' });
+      return errorResponse(res, `Invalid status. Allowed: ${allowed.join(', ')}`, 400);
     }
 
     const esmp = await EsmpDistrictUpload.findByPk(esmp_id);
     if (!esmp) {
-      return res.status(404).json({ success: false, message: 'ESMP not found' });
+      return errorResponse(res, 'ESMP not found', 404);
     }
 
     await esmp.update({
       status,
       admin_comments: comments || null,
-      reviewed_at: new Date()
+      reviewed_at: new Date(),
     });
-   
 
-    // Notify district user
+    // Notify submitter
     await Notification.create({
       user_id: esmp.submitted_by,
-      message: `Your ESMP has been ${status}`
+      title: `ESMP ${status}`,
+      message: `Your ESMP "${esmp.project_name}" has been ${status.toLowerCase()} by admin.`,
     });
 
-    res.json({
-      success: true,
-      message: `ESMP ${status.toLowerCase()} successfully`
-    });
-
+    successResponse(res, { esmp }, `ESMP ${status.toLowerCase()} successfully`);
   } catch (err) {
-    res.status(500).json({ success: false });
+    errorResponse(res, 'Failed to update ESMP status', 500, err);
   }
 };
 
-
 // ==============================
-// VIEW ALL ESMPs (ADMIN)
+// VIEW ALL ESMPs (ADMIN) - with optional filters
 // ==============================
 exports.getAllEsmps = async (req, res) => {
   try {
@@ -129,17 +151,17 @@ exports.getAllEsmps = async (req, res) => {
       include: [
         {
           model: ReviewerAssignment,
-          include: [{ model: User, as: 'reviewer', attributes: ['id', 'name'] }]
-        }
-      ]
+          include: [{ model: User, as: 'reviewer', attributes: ['id', 'name'] }],
+        },
+        { model: User, as: 'User', attributes: ['name', 'district'] },
+      ],
     });
 
-    res.json({ success: true, data: esmps });
+    successResponse(res, esmps);
   } catch (err) {
-    res.status(500).json({ success: false });
+    errorResponse(res, 'Failed to fetch ESMPs', 500, err);
   }
 };
-
 
 // ==============================
 // ACTIVATE / DEACTIVATE USER
@@ -150,17 +172,14 @@ exports.toggleUserStatus = async (req, res) => {
 
     const user = await User.findByPk(user_id);
     if (!user) {
-      return res.status(404).json({ success: false });
+      return errorResponse(res, 'User not found', 404);
     }
 
     const newStatus = !user.is_active;
     await user.update({ is_active: newStatus });
 
-    res.json({
-      success: true,
-      message: `User ${newStatus ? 'activated' : 'deactivated'}`
-    });
+    successResponse(res, null, `User ${newStatus ? 'activated' : 'deactivated'}`);
   } catch (err) {
-    res.status(500).json({ success: false });
+    errorResponse(res, 'Failed to toggle user status', 500, err);
   }
 };

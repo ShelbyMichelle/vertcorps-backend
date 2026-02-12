@@ -1,12 +1,11 @@
 const { EsmpDistrictUpload, User, Review, Notification } = require('../models');
 const { Op } = require('sequelize');
 
-// Helper to standardize success response
+// Helper functions (unchanged)
 const successResponse = (res, data, message = 'Success', status = 200) => {
   res.status(status).json({ success: true, message, data });
 };
 
-// Helper for errors
 const errorResponse = (res, message, status = 500, error = null) => {
   console.error(message, error || '');
   res.status(status).json({ success: false, message, error: error?.message || error });
@@ -78,82 +77,6 @@ exports.getEsmpsByStatus = async (req, res) => {
 };
 
 // ==============================
-// ASSIGN REVIEWER TO ESMP (Admin only)
-// ==============================
-exports.assignReviewer = async (req, res) => {
-  try {
-    if (req.user.role !== 'admin') {
-      return errorResponse(res, 'Access denied', 403);
-    }
-
-    const { esmpId } = req.params;
-    const { reviewer_id, deadline } = req.body;
-
-    if (!reviewer_id) {
-      return errorResponse(res, 'Reviewer ID is required', 400);
-    }
-
-    const esmp = await EsmpDistrictUpload.findByPk(esmpId);
-    if (!esmp) {
-      return errorResponse(res, 'ESMP not found', 404);
-    }
-
-    const reviewer = await User.findOne({
-      where: { id: reviewer_id, role: 'reviewer' },
-    });
-    if (!reviewer) {
-      return errorResponse(res, 'Invalid reviewer ID or user is not a reviewer', 400);
-    }
-
-    // Update assignment
-    esmp.reviewer_id = reviewer_id;
-
-    // Update status if still Submitted
-    if (esmp.status === 'Submitted') {
-      esmp.status = 'Pending';
-    }
-
-    // Handle optional deadline
-    if (deadline) {
-      const deadlineDate = new Date(deadline);
-      if (isNaN(deadlineDate.getTime())) {
-        return errorResponse(res, 'Invalid deadline format', 400);
-      }
-      if (deadlineDate < new Date()) {
-        return errorResponse(res, 'Deadline cannot be in the past', 400);
-      }
-      esmp.deadline = deadlineDate;
-    }
-
-    await esmp.save();
-
-    // Notify reviewer
-    await Notification.create({
-      user_id: reviewer_id,
-      title: 'New ESMP Assigned',
-      message: `You have been assigned to review "${esmp.project_name}" from ${esmp.district}.`,
-    });
-
-    // Notify submitter
-    await Notification.create({
-      user_id: esmp.submitted_by,
-      title: 'ESMP Assigned for Review',
-      message: `Your ESMP "${esmp.project_name}" has been assigned to a reviewer.`,
-    });
-
-    successResponse(res, {
-      esmpId: esmp.id,
-      reviewer_id,
-      reviewer_name: reviewer.name,
-      status: esmp.status,
-      deadline: esmp.deadline,
-    }, 'Reviewer assigned successfully');
-  } catch (err) {
-    errorResponse(res, 'Failed to assign reviewer', 500, err);
-  }
-};
-
-// ==============================
 // GET ASSIGNED ESMPs FOR CURRENT REVIEWER
 // ==============================
 exports.getMyAssignedEsmps = async (req, res) => {
@@ -207,7 +130,6 @@ exports.reviewAction = async (req, res) => {
       return errorResponse(res, 'ESMP not found', 404);
     }
 
-    // Optional: Verify this ESMP is assigned to this reviewer
     if (esmp.reviewer_id !== req.user.id) {
       return errorResponse(res, 'You are not assigned to review this ESMP', 403);
     }
@@ -229,7 +151,6 @@ exports.reviewAction = async (req, res) => {
       await review.save();
     }
 
-    // Notify submitter
     let notificationMessage;
     switch (status) {
       case 'Approved':
@@ -249,7 +170,6 @@ exports.reviewAction = async (req, res) => {
       message: notificationMessage,
     });
 
-    // Notify admins
     const admins = await User.findAll({ where: { role: 'admin' } });
     const adminNotifications = admins.map((admin) => ({
       user_id: admin.id,
@@ -266,7 +186,7 @@ exports.reviewAction = async (req, res) => {
 };
 
 // ==============================
-// GET REVIEWER DASHBOARD STATS (fixed to show only assigned)
+// GET REVIEWER DASHBOARD STATS
 // ==============================
 exports.getReviewerDashboardStats = async (req, res) => {
   try {
