@@ -7,61 +7,61 @@ const { EsmpDistrictUpload, User } = require('../models');
 
 // Get all submitted ESMPs (for download list)
 // Get ESMPs assigned to the logged-in reviewer
-exports.getSubmittedEsmps = async (req, res) => {
-  try {
-    // Get all ESMPs with reviewer_id field included
-    const esmps = await EsmpDistrictUpload.findAll({
-      where: {
-        status: ['Submitted', 'Pending', 'Pending', 'Approved', 'Returned']
-      },
-      // ✅ Explicitly include reviewer_id in the attributes
-      attributes: [
-        'id', 
-        'esmp_id', 
-        'project_name', 
-        'district', 
-        'subproject',
-        'coordinates',
-        'sector',
-        'cycle',
-        'funding_component',
-        'status',
-        'file_name',
-        'file_path',
-        'submitted_by',
-        'reviewer_id',  // ← THIS IS THE KEY FIELD
-        'deadline',
-        'createdAt',
-        'updatedAt'
-      ],
-      order: [['createdAt', 'DESC']],
-      include: [
-        {
-          model: User,
-          as: 'User', // Make sure this alias matches your model association
-          attributes: ['id', 'name', 'email', 'district']
-        }
-      ]
-    });
+// exports.getSubmittedEsmps = async (req, res) => {
+//   try {
+//     // Get all ESMPs with reviewer_id field included
+//     const esmps = await EsmpDistrictUpload.findAll({
+//       where: {
+//         status: ['Submitted', 'Pending', 'Pending', 'Approved', 'Returned']
+//       },
+//       // ✅ Explicitly include reviewer_id in the attributes
+//       attributes: [
+//         'id', 
+//         'esmp_id', 
+//         'project_name', 
+//         'district', 
+//         'subproject',
+//         'coordinates',
+//         'sector',
+//         'cycle',
+//         'funding_component',
+//         'status',
+//         'file_name',
+//         'file_path',
+//         'submitted_by',
+//         'reviewer_id',  // ← THIS IS THE KEY FIELD
+//         'deadline',
+//         'createdAt',
+//         'updatedAt'
+//       ],
+//       order: [['createdAt', 'DESC']],
+//       include: [
+//         {
+//           model: User,
+//           as: 'User', // Make sure this alias matches your model association
+//           attributes: ['id', 'name', 'email', 'district']
+//         }
+//       ]
+//     });
 
-    console.log('📤 Sending ESMPs to reviewer:', {
-      total: esmps.length,
-      sample: esmps[0] // Log first ESMP to see structure
-    });
+//     console.log('📤 Sending ESMPs to reviewer:', {
+//       total: esmps.length,
+//       sample: esmps[0] // Log first ESMP to see structure
+//     });
 
-    res.json({ 
-      success: true, 
-      data: esmps 
-    });
-  } catch (err) {
-    console.error('❌ Error fetching ESMPs:', err);
-    res.status(500).json({ 
-      success: false,
-      message: 'Failed to fetch ESMPs',
-      error: process.env.NODE_ENV === 'development' ? err.message : 'Server error'
-    });
-  }
-};
+//     res.json({ 
+//       success: true, 
+//       data: esmps 
+//     });
+//   } catch (err) {
+//     console.error('❌ Error fetching ESMPs:', err);
+//     res.status(500).json({ 
+//       success: false,
+//       message: 'Failed to fetch ESMPs',
+//       error: process.env.NODE_ENV === 'development' ? err.message : 'Server error'
+//     });
+//   }
+// };
 // Download a specific ESMP file
 exports.downloadEsmpFile = async (req, res) => {
   try {

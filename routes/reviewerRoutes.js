@@ -8,12 +8,12 @@ const role = require('../middleware/role');
 // All routes are prefixed with /api/reviewer from server.js
 
 // GET /api/reviewer/esmps (Get all submitted ESMPs for reviewer)
-router.get(
-  '/esmps',
-  auth,
-  role('reviewer'),
-  reviewerController.getSubmittedEsmps
-);
+// router.get(
+//   '/esmps',
+//   auth,
+//   role('reviewer'),
+//   reviewerController.getSubmittedEsmps
+// );
 
 // GET /api/reviewer/esmps/:id (Get specific ESMP details)
 router.get(
