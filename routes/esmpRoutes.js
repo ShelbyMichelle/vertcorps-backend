@@ -6,6 +6,7 @@ const esmpController = require('../controllers/esmpController');
 const auth = require('../middleware/auth');
 const role = require('../middleware/role');
 const upload = require('../middleware/upload');
+const adminController = require('../controllers/adminController');
 
 // ────────────────────────────────────────────────
 // ESMP Workflow Routes (authenticated)
@@ -44,6 +45,14 @@ router.put(
   role('reviewer'),
   upload.single('file'),
   esmpController.reviewAction
+);
+
+// PUT /api/esmp/:esmpId/assign → Assign reviewer (admin)
+router.put(
+  '/:esmpId/assign',
+  auth,
+  role('admin'),
+  adminController.assignReviewer
 );
 
 // GET /api/esmp/reviewers     → List of reviewers (still useful for admin dropdown, but move to admin if preferred)

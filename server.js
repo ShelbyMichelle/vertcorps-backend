@@ -67,6 +67,7 @@ const districtEsmpRoutes = require('./routes/districtEsmpRoutes');
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/esmp', esmpRoutes); // optional: namespace routes
+app.use('/api/esmps', esmpRoutes); // backward compatibility for plural clients
 app.use('/api/users', userRoutes);
 app.use('/api/reviewer', reviewerRoutes);
 app.use('/api/statistics', statisticsRoutes);

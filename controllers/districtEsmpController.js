@@ -2,6 +2,20 @@
 const path = require('path');
 const fs = require('fs');
 const { EsmpDistrictUpload, Notification, User } = require('../models');
+const { Op } = require('sequelize');
+
+// Keep overdue status in sync with deadlines.
+const syncOverdueStatuses = async () => {
+  await EsmpDistrictUpload.update(
+    { status: 'Overdue' },
+    {
+      where: {
+        deadline: { [Op.not]: null, [Op.lt]: new Date() },
+        status: { [Op.in]: ['Submitted', 'Pending'] },
+      },
+    }
+  );
+};
 
 // ==============================
 // SUBMIT NEW ESMP
@@ -91,6 +105,8 @@ exports.submitEsmp = async (req, res) => {
 // ==============================
 exports.getMyEsmps = async (req, res) => {
   try {
+    await syncOverdueStatuses();
+
     const esmps = await EsmpDistrictUpload.findAll({
       where: { submitted_by: req.user.id },
       order: [['createdAt', 'DESC']],
@@ -227,6 +243,8 @@ exports.resubmitEsmp = async (req, res) => {
 exports.getDashboardStats = async (req, res) => {
   try {
     const userId = req.user.id;
+
+    await syncOverdueStatuses();
 
     // Count ESMPs by status for this district user
     const submitted = await EsmpDistrictUpload.count({

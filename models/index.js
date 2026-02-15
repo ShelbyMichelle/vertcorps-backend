@@ -5,8 +5,11 @@ const Sequelize = require('sequelize');
 const basename = path.basename(__filename);
 const db = {};
 
-// ✅ Use DATABASE_URL if available (for Render/production), otherwise use individual credentials
-const sequelize = process.env.DATABASE_URL
+const isProduction = process.env.NODE_ENV === 'production';
+const useDatabaseUrl = isProduction && !!process.env.DATABASE_URL;
+
+// Use DATABASE_URL in production deployments, local credentials in development.
+const sequelize = useDatabaseUrl
   ? new Sequelize(process.env.DATABASE_URL, {
       dialect: 'postgres',
       protocol: 'postgres',
@@ -14,7 +17,7 @@ const sequelize = process.env.DATABASE_URL
       dialectOptions: {
         ssl: {
           require: true,
-          rejectUnauthorized: false // Required for Render
+          rejectUnauthorized: false
         }
       },
       pool: {

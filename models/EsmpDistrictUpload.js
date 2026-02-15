@@ -57,7 +57,7 @@ reviewer_id: {
   });
 
   EsmpDistrictUpload.associate = (models) => {
-    EsmpDistrictUpload.belongsTo(models.User, { foreignKey: 'submitted_by' });
+    EsmpDistrictUpload.belongsTo(models.User, { foreignKey: 'submitted_by', as: 'User' });
     EsmpDistrictUpload.hasMany(models.Review, { foreignKey: 'esmp_id' });
     EsmpDistrictUpload.hasMany(models.ReviewerAssignment, { foreignKey: 'esmp_id' });
     EsmpDistrictUpload.belongsTo(models.User, { foreignKey: 'reviewer_id', as: 'Reviewer' });

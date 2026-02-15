@@ -1,4 +1,4 @@
-const { EsmpDistrictUpload, User, Review, Notification } = require('../models');
+const { EsmpDistrictUpload, User, Review, Notification, sequelize } = require('../models');
 const { Op } = require('sequelize');
 
 // Helper functions (unchanged)
@@ -11,6 +11,19 @@ const errorResponse = (res, message, status = 500, error = null) => {
   res.status(status).json({ success: false, message, error: error?.message || error });
 };
 
+// Keep overdue status in sync with deadlines.
+const syncOverdueStatuses = async () => {
+  await EsmpDistrictUpload.update(
+    { status: 'Overdue' },
+    {
+      where: {
+        deadline: { [Op.not]: null, [Op.lt]: new Date() },
+        status: { [Op.in]: ['Submitted', 'Pending'] },
+      },
+    }
+  );
+};
+
 // ==============================
 // GET ALL ESMPs (Admin only)
 // ==============================
@@ -19,6 +32,8 @@ exports.getAllEsmps = async (req, res) => {
     if (req.user.role !== 'admin') {
       return errorResponse(res, 'Access denied', 403);
     }
+
+    await syncOverdueStatuses();
 
     const esmps = await EsmpDistrictUpload.findAll({
       order: [['createdAt', 'DESC']],
@@ -46,6 +61,8 @@ exports.getEsmpsByStatus = async (req, res) => {
       return errorResponse(res, 'Access denied', 403);
     }
 
+    await syncOverdueStatuses();
+
     const { status } = req.params;
     const validStatuses = ['Submitted', 'Pending', 'Approved', 'Rejected', 'Overdue', 'Returned'];
 
@@ -70,7 +87,7 @@ exports.getEsmpsByStatus = async (req, res) => {
       ],
     });
 
-    successResponse(res, { esmps, count: esmps.length });
+    return res.status(200).json({ success: true, message: 'Success', data: esmps, count: esmps.length });
   } catch (err) {
     errorResponse(res, 'Failed to fetch ESMPs by status', 500, err);
   }
@@ -84,6 +101,8 @@ exports.getMyAssignedEsmps = async (req, res) => {
     if (req.user.role !== 'reviewer') {
       return errorResponse(res, 'Access denied', 403);
     }
+
+    await syncOverdueStatuses();
 
     const esmps = await EsmpDistrictUpload.findAll({
       where: {
@@ -134,50 +153,67 @@ exports.reviewAction = async (req, res) => {
       return errorResponse(res, 'You are not assigned to review this ESMP', 403);
     }
 
-    esmp.status = status;
-    await esmp.save();
+    // Keep ESMP status values for UI/workflow, but map to Review model enum values.
+    const reviewStatusMap = {
+      Approved: 'Approved',
+      Returned: 'Returned for Revision',
+      Rejected: 'Rejected',
+    };
+    const reviewStatus = reviewStatusMap[status];
 
-    const review = await Review.create({
-      esmp_id: esmpId,
-      reviewer_id: req.user.id,
-      status,
-      comments: review_comments?.trim() || null,
-      reviewed_at: new Date(),
-    });
+    const tx = await sequelize.transaction();
+    let review;
+    try {
+      esmp.status = status;
+      await esmp.save({ transaction: tx });
 
-    if (req.file) {
-      review.annotated_file_path = req.file.path;
-      review.annotated_file_name = req.file.originalname;
-      await review.save();
+      review = await Review.create(
+        {
+          esmp_id: esmpId,
+          reviewer_id: req.user.id,
+          status: reviewStatus,
+          comment: review_comments?.trim() || null,
+        },
+        { transaction: tx }
+      );
+
+      // Persist annotated file fields only if these columns exist on Review.
+      if (req.file && Review.rawAttributes.annotated_file_path && Review.rawAttributes.annotated_file_name) {
+        review.annotated_file_path = req.file.path;
+        review.annotated_file_name = req.file.originalname;
+        await review.save({ transaction: tx });
+      }
+
+      await Notification.create(
+        {
+          user_id: esmp.submitted_by,
+          title: `ESMP ${status}`,
+          message:
+            status === 'Approved'
+              ? `Your ESMP "${esmp.project_name}" has been approved.`
+              : status === 'Returned'
+              ? `Your ESMP "${esmp.project_name}" has been returned for revision. Please review the comments.`
+              : `Your ESMP "${esmp.project_name}" has been rejected. Please review the comments.`,
+        },
+        { transaction: tx }
+      );
+
+      const admins = await User.findAll({ where: { role: 'admin' }, transaction: tx });
+      const adminNotifications = admins.map((admin) => ({
+        user_id: admin.id,
+        title: 'ESMP Reviewed',
+        message: `ESMP "${esmp.project_name}" has been ${status.toLowerCase()} by reviewer ${req.user.name}.`,
+      }));
+
+      if (adminNotifications.length > 0) {
+        await Notification.bulkCreate(adminNotifications, { transaction: tx });
+      }
+
+      await tx.commit();
+    } catch (err) {
+      await tx.rollback();
+      throw err;
     }
-
-    let notificationMessage;
-    switch (status) {
-      case 'Approved':
-        notificationMessage = `Your ESMP "${esmp.project_name}" has been approved.`;
-        break;
-      case 'Returned':
-        notificationMessage = `Your ESMP "${esmp.project_name}" has been returned for revision. Please review the comments.`;
-        break;
-      case 'Rejected':
-        notificationMessage = `Your ESMP "${esmp.project_name}" has been rejected. Please review the comments.`;
-        break;
-    }
-
-    await Notification.create({
-      user_id: esmp.submitted_by,
-      title: `ESMP ${status}`,
-      message: notificationMessage,
-    });
-
-    const admins = await User.findAll({ where: { role: 'admin' } });
-    const adminNotifications = admins.map((admin) => ({
-      user_id: admin.id,
-      title: `ESMP Reviewed`,
-      message: `ESMP "${esmp.project_name}" has been ${status.toLowerCase()} by reviewer ${req.user.name}.`,
-    }));
-
-    await Notification.bulkCreate(adminNotifications);
 
     successResponse(res, { esmp, review }, 'Review submitted successfully');
   } catch (err) {
@@ -193,6 +229,8 @@ exports.getReviewerDashboardStats = async (req, res) => {
     if (req.user.role !== 'reviewer') {
       return errorResponse(res, 'Access denied', 403);
     }
+
+    await syncOverdueStatuses();
 
     const reviewerId = req.user.id;
 
@@ -212,7 +250,10 @@ exports.getReviewerDashboardStats = async (req, res) => {
     });
 
     const returned = await Review.count({
-      where: { reviewer_id: reviewerId, status: 'Returned' },
+      where: {
+        reviewer_id: reviewerId,
+        status: { [Op.in]: ['Returned', 'Returned for Revision'] },
+      },
     });
 
     successResponse(res, {
@@ -255,6 +296,8 @@ exports.getAdminDashboardStats = async (req, res) => {
     if (req.user.role !== 'admin') {
       return errorResponse(res, 'Access denied', 403);
     }
+
+    await syncOverdueStatuses();
 
     const totalSubmissions = await EsmpDistrictUpload.count();
 
