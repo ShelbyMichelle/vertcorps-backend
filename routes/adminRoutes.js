@@ -20,5 +20,6 @@ router.get('/esmps', auth, role('admin'), adminController.getSubmittedEsmps);  /
 
 // PATCH /api/admin/users/:user_id/toggle
 router.patch('/users/:user_id/toggle', auth, role('admin'), adminController.toggleUserStatus);
+router.get('/audit-logs', auth, role('admin'), adminController.getAuditLogs);
 
 module.exports = router;

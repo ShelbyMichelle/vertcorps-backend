@@ -2,7 +2,8 @@ const {
   EsmpDistrictUpload,
   ReviewerAssignment,
   User,
-  Notification
+  Notification,
+  AuditLog
 } = require('../models');
 const socketService = require('../services/socket');
 const { Op } = require('sequelize');
@@ -217,5 +218,72 @@ exports.toggleUserStatus = async (req, res) => {
     successResponse(res, null, `User ${newStatus ? 'activated' : 'deactivated'}`);
   } catch (err) {
     errorResponse(res, 'Failed to toggle user status', 500, err);
+  }
+};
+
+// ==============================
+// VIEW AUDIT LOGS (ADMIN)
+// ==============================
+exports.getAuditLogs = async (req, res) => {
+  try {
+    const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 25, 1), 100);
+    const offset = (page - 1) * limit;
+    const { event_type, start_date, end_date } = req.query;
+
+    const whereClause = {};
+    if (event_type && ['LOGIN_SUCCESS', 'API_ACCESS'].includes(event_type)) {
+      whereClause.event_type = event_type;
+    }
+
+    if (start_date || end_date) {
+      const createdAtFilter = {};
+
+      if (start_date) {
+        const startDateObj = new Date(start_date);
+        if (Number.isNaN(startDateObj.getTime())) {
+          return errorResponse(res, 'Invalid start_date format', 400);
+        }
+        startDateObj.setHours(0, 0, 0, 0);
+        createdAtFilter[Op.gte] = startDateObj;
+      }
+
+      if (end_date) {
+        const endDateObj = new Date(end_date);
+        if (Number.isNaN(endDateObj.getTime())) {
+          return errorResponse(res, 'Invalid end_date format', 400);
+        }
+        endDateObj.setHours(23, 59, 59, 999);
+        createdAtFilter[Op.lte] = endDateObj;
+      }
+
+      whereClause.createdAt = createdAtFilter;
+    }
+
+    const { count, rows } = await AuditLog.findAndCountAll({
+      where: whereClause,
+      include: [
+        {
+          model: User,
+          as: 'user',
+          attributes: ['id', 'name', 'email', 'role'],
+        },
+      ],
+      order: [['createdAt', 'DESC']],
+      limit,
+      offset,
+    });
+
+    successResponse(res, {
+      logs: rows,
+      pagination: {
+        page,
+        limit,
+        total: count,
+        totalPages: Math.ceil(count / limit),
+      },
+    }, 'Audit logs fetched successfully');
+  } catch (err) {
+    errorResponse(res, 'Failed to fetch audit logs', 500, err);
   }
 };

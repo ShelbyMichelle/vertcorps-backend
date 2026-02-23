@@ -2,6 +2,7 @@ const db = require('../models');
 const User = db.User;
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const { logEvent } = require('../services/auditLogger');
 
 exports.login = async (req, res) => {
   const { email, password } = req.body;
@@ -52,6 +53,14 @@ exports.login = async (req, res) => {
     );
 
     console.log('✅ Login successful for:', user.email);
+
+    await logEvent({
+      userId: user.id,
+      eventType: 'LOGIN_SUCCESS',
+      method: req.method,
+      path: req.originalUrl,
+      req,
+    });
 
     // 5️⃣ Respond
     res.json({

@@ -37,6 +37,12 @@ module.exports = (sequelize, DataTypes) => {
 
   // ✅ Associations
   User.associate = (models) => {
+    User.hasMany(models.AuditLog, {
+      foreignKey: 'user_id',
+      as: 'auditLogs',
+      onDelete: 'CASCADE'
+    });
+
     User.hasMany(models.Notification, {
       foreignKey: 'user_id',
       onDelete: 'CASCADE'
