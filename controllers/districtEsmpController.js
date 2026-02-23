@@ -81,8 +81,8 @@ exports.submitEsmp = async (req, res) => {
     //   message: `New ESMP "${project_name}" from ${district} district is pending your review.`
     // }));
 
-    // Bulk create all notifications
-    await Notification.bulkCreate([...adminNotifications]);
+    // Create notifications for each admin so model hooks fire and sockets emit
+    await Promise.all(adminNotifications.map(n => Notification.create(n)));
 
     res.status(201).json({
       success: true,
@@ -219,7 +219,8 @@ exports.resubmitEsmp = async (req, res) => {
       }))
     ];
 
-    await Notification.bulkCreate(notifications);
+    // Create notifications individually so afterCreate hook will emit via sockets
+    await Promise.all(notifications.map(n => Notification.create(n)));
 
     res.json({
       success: true,

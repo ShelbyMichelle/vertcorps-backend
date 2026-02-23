@@ -199,14 +199,20 @@ exports.reviewAction = async (req, res) => {
       );
 
       const admins = await User.findAll({ where: { role: 'admin' }, transaction: tx });
+      // req.user comes from JWT and may not include name. Fetch reviewer name from DB.
+      const reviewerUser = await User.findByPk(req.user.id, { transaction: tx });
+      const reviewerName = reviewerUser ? reviewerUser.name : 'Reviewer';
       const adminNotifications = admins.map((admin) => ({
         user_id: admin.id,
         title: 'ESMP Reviewed',
-        message: `ESMP "${esmp.project_name}" has been ${status.toLowerCase()} by reviewer ${req.user.name}.`,
+        message: `ESMP "${esmp.project_name}" has been ${status.toLowerCase()} by reviewer ${reviewerName}.`,
       }));
 
       if (adminNotifications.length > 0) {
-        await Notification.bulkCreate(adminNotifications, { transaction: tx });
+        // Create notifications individually within the transaction so hooks run
+        await Promise.all(
+          adminNotifications.map((n) => Notification.create(n, { transaction: tx }))
+        );
       }
 
       await tx.commit();

@@ -4,39 +4,86 @@ const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
-const { sequelize, User, EsmpDistrictUpload } = require('./models');  // ✅ All from models
+const http = require('http');
+const { Server } = require('socket.io');
 
+const { sequelize, User, EsmpDistrictUpload } = require('./models');
+
+// =======================================================
+// APP & SERVER SETUP
+// =======================================================
 const app = express();
+const server = http.createServer(app);
+
 const PORT = process.env.PORT || 5000;
+
+// =======================================================
+// SOCKET.IO SETUP
+// =======================================================
+const io = new Server(server, {
+  cors: {
+    origin: [
+      'http://localhost:3000',
+      'http://localhost:5173',
+      'https://vertcorps-official-site.netlify.app',
+    ],
+    methods: ['GET', 'POST'],
+    credentials: true,
+  },
+});
+
+// expose io via a tiny service so models/hooks can emit events
+const socketService = require('./services/socket');
+socketService.setIO(io);
+
+io.on('connection', (socket) => {
+  const { userId, role } = socket.handshake.auth;
+
+  console.log('🔌 New socket connection:', { socketId: socket.id, auth: socket.handshake.auth });
+
+  if (!userId) {
+    console.log('❌ Socket connection rejected (no userId)');
+    return socket.disconnect();
+  }
+
+  socket.join(`user_${userId}`);
+  console.log(`🔌 User ${userId} connected via socket (${role}) — socketId: ${socket.id}`);
+
+  socket.on('disconnect', () => {
+    console.log(`🔌 User ${userId} disconnected`);
+  });
+});
+
+// 🔔 Make io accessible in routes (VERY IMPORTANT)
+app.set('io', io);
 
 // =======================================================
 // CORS CONFIGURATION
 // =======================================================
 const allowedOrigins = [
-  'http://localhost:3000',                        // local frontend
-  'http://localhost:3001',                        // alternative local port
-  'http://localhost:5000',                        // local backend port
-  'http://localhost:5173',                        // Vite dev server
-  'https://vertcorps-official-site.netlify.app',  // deployed frontend
-  'https://vertcorps-backend-2.onrender.com',     // deployed backend
+  'http://localhost:3000',
+  'http://localhost:3001',
+  'http://localhost:5000',
+  'http://localhost:5173',
+  'https://vertcorps-official-site.netlify.app',
+  'https://vertcorps-backend-2.onrender.com',
 ];
 
 app.use(cors({
   origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps, Postman, or same-origin)
     if (!origin) return callback(null, true);
-    
-    if (allowedOrigins.indexOf(origin) !== -1) {
+    if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
       console.log('❌ CORS blocked origin:', origin);
-      callback(new Error('CORS policy: Access denied from this origin'), false);
+      callback(new Error('CORS policy blocked this origin'), false);
     }
   },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],  // Add this
-  allowedHeaders: ['Content-Type', 'Authorization'],              // Add this
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
 }));
+
 // =======================================================
 // MIDDLEWARE
 // =======================================================
@@ -44,7 +91,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // =======================================================
-// STATIC FILES (UPLOADS)
+// STATIC FILES
 // =======================================================
 const uploadDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadDir)) {
@@ -55,24 +102,15 @@ app.use('/uploads', express.static(uploadDir));
 // =======================================================
 // ROUTES
 // =======================================================
-const notificationRoutes = require('./routes/notificationRoutes');
-const authRoutes = require('./routes/authRoutes');
-const esmpRoutes = require('./routes/esmpRoutes');
-const userRoutes = require('./routes/userRoutes');
-const reviewerRoutes = require('./routes/reviewerRoutes');
-const statisticsRoutes = require('./routes/statisticsRoutes');
-const adminRoutes = require('./routes/adminRoutes');
-const districtEsmpRoutes = require('./routes/districtEsmpRoutes');
-
-app.use('/api/notifications', notificationRoutes);
-app.use('/api/auth', authRoutes);
-app.use('/api/esmp', esmpRoutes); // optional: namespace routes
-app.use('/api/esmps', esmpRoutes); // backward compatibility for plural clients
-app.use('/api/users', userRoutes);
-app.use('/api/reviewer', reviewerRoutes);
-app.use('/api/statistics', statisticsRoutes);
-app.use('/api/admin', adminRoutes);
-app.use('/api/district', districtEsmpRoutes);
+app.use('/api/notifications', require('./routes/notificationRoutes'));
+app.use('/api/auth', require('./routes/authRoutes'));
+app.use('/api/esmp', require('./routes/esmpRoutes'));
+app.use('/api/esmps', require('./routes/esmpRoutes'));
+app.use('/api/users', require('./routes/userRoutes'));
+app.use('/api/reviewer', require('./routes/reviewerRoutes'));
+app.use('/api/statistics', require('./routes/statisticsRoutes'));
+app.use('/api/admin', require('./routes/adminRoutes'));
+app.use('/api/district', require('./routes/districtEsmpRoutes'));
 
 // =======================================================
 // HEALTH CHECK
@@ -82,7 +120,7 @@ app.get('/health', (req, res) => {
 });
 
 // =======================================================
-// ESMP FILE UPLOAD
+// FILE UPLOAD
 // =======================================================
 const storage = multer.diskStorage({
   destination: uploadDir,
@@ -104,20 +142,8 @@ const upload = multer({
 
 app.post('/api/esmp/upload', upload.array('files'), async (req, res) => {
   try {
-    const { esmp_id, district, subproject, coordinates, sector, cycle, funding_component } = req.body;
-
-    if (!req.files || !req.files.length) {
-      return res.status(400).json({ success: false, message: 'No files uploaded' });
-    }
-
     const records = req.files.map((file) => ({
-      esmp_id,
-      district,
-      subproject,
-      coordinates,
-      sector,
-      cycle,
-      funding_component,
+      ...req.body,
       file_name: file.originalname,
       file_path: file.path,
     }));
@@ -143,68 +169,34 @@ app.use((err, req, res, next) => {
 });
 
 // =======================================================
-// START SERVER
+// START SERVER (IMPORTANT)
 // =======================================================
 sequelize.sync({ alter: true })
   .then(async () => {
     console.log('✅ Database synced');
-    
-    // Auto-create default users if none exist
+
     const userCount = await User.count();
     console.log(`👥 Users in database: ${userCount}`);
-    
+
     if (userCount === 0) {
-      console.log('🔧 No users found. Creating default users...');
-      
       const bcrypt = require('bcryptjs');
       const hashedPassword = await bcrypt.hash('password123', 10);
-      
+
       await User.bulkCreate([
-        {
-          name: 'Admin User',
-          email: 'admin@vertcorps.com',
-          password: hashedPassword,
-          role: 'admin',
-          district: null
-        },
-        {
-          name: 'District EDO Lilongwe',
-          email: 'edo.lilongwe@vertcorps.com',
-          password: hashedPassword,
-          role: 'district_EDO',
-          district: 'Lilongwe'
-        },
-        {
-          name: 'District EDO Blantyre',
-          email: 'edo.blantyre@vertcorps.com',
-          password: hashedPassword,
-          role: 'district_EDO',
-          district: 'Blantyre'
-        },
-        {
-          name: 'Reviewer User',
-          email: 'reviewer@vertcorps.com',
-          password: hashedPassword,
-          role: 'reviewer',
-          district: null
-        }
+        { name: 'Admin User', email: 'admin@vertcorps.com', password: hashedPassword, role: 'admin' },
+        { name: 'District EDO Lilongwe', email: 'edo.lilongwe@vertcorps.com', password: hashedPassword, role: 'district_EDO', district: 'Lilongwe' },
+        { name: 'District EDO Blantyre', email: 'edo.blantyre@vertcorps.com', password: hashedPassword, role: 'district_EDO', district: 'Blantyre' },
+        { name: 'Reviewer User', email: 'reviewer@vertcorps.com', password: hashedPassword, role: 'reviewer' },
       ]);
-      
-      console.log('✅ Default users created!');
-      console.log('   📧 admin@vertcorps.com / password123');
-      console.log('   📧 edo.lilongwe@vertcorps.com / password123');
-      console.log('   📧 edo.blantyre@vertcorps.com / password123');
-      console.log('   📧 reviewer@vertcorps.com / password123');
-    } else {
-      console.log('✅ Users already exist, skipping creation');
+
+      console.log('✅ Default users created');
     }
-    
-    app.listen(PORT, () => {
+
+    // 🚀 IMPORTANT: Use server.listen (not app.listen)
+    server.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
     });
   })
   .catch((err) => {
     console.error('❌ Database sync failed:', err);
   });
-
-

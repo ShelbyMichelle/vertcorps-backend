@@ -4,6 +4,7 @@ const {
   User,
   Notification
 } = require('../models');
+const socketService = require('../services/socket');
 const { Op } = require('sequelize');
 
 // Helper for consistent responses (optional - you can keep your style)
@@ -21,13 +22,15 @@ const errorResponse = (res, message, status = 500, error = null) => {
 // ==============================
 exports.assignReviewer = async (req, res) => {
   try {
-    const { esmpId } = req.params;
+    // accept esmpId from params or body (frontend may send either)
+    const esmpId = req.params.esmpId || req.body.esmpId;
     const { reviewer_id, deadline } = req.body;
 
     if (!reviewer_id) {
       return errorResponse(res, 'Reviewer ID is required', 400);
     }
 
+    console.log('assignReviewer called for esmpId:', esmpId, 'reviewer_id:', reviewer_id);
     const esmp = await EsmpDistrictUpload.findByPk(esmpId);
     if (!esmp) {
       return errorResponse(res, 'ESMP not found', 404);
@@ -72,19 +75,23 @@ exports.assignReviewer = async (req, res) => {
       assigned_by: req.user.id,
     });
 
-    // Notify reviewer
-    await Notification.create({
+    // Notify reviewer (create DB record and emit via sockets)
+    const reviewerNotification = await Notification.create({
       user_id: reviewer_id,
       title: 'New ESMP Assigned',
       message: `You have been assigned to review "${esmp.project_name}" from ${esmp.district}.`,
     });
+    const emittedReviewer = socketService.emitToUser(reviewer_id, 'notification', reviewerNotification);
+    console.log('emit to reviewer result:', emittedReviewer);
 
     // Notify submitter (district EDO)
-    await Notification.create({
+    const submitterNotification = await Notification.create({
       user_id: esmp.submitted_by,
       title: 'ESMP Assigned for Review',
       message: `Your ESMP "${esmp.project_name}" has been assigned to a reviewer.`,
     });
+    const emittedSubmitter = socketService.emitToUser(esmp.submitted_by, 'notification', submitterNotification);
+    console.log('emit to submitter result:', emittedSubmitter);
 
     successResponse(res, {
       esmpId: esmp.id,
