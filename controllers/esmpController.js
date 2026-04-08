@@ -29,7 +29,8 @@ const syncOverdueStatuses = async () => {
 // ==============================
 exports.getAllEsmps = async (req, res) => {
   try {
-    if (req.user.role !== 'admin') {
+    // Allow admin and viewer roles to see all ESMPs
+    if (!['admin', 'viewer'].includes(req.user.role)) {
       return errorResponse(res, 'Access denied', 403);
     }
 

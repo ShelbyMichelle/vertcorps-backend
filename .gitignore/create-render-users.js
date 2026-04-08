@@ -8,6 +8,12 @@ async function createTestUsers() {
     await sequelize.authenticate();
     console.log('✅ Database connected');
 
+    await User.destroy({
+  where: {},
+  truncate: true,
+  cascade: true
+});
+
     // Check if users already exist
     const existingUsers = await User.findAll();
     if (existingUsers.length > 0) {
@@ -49,6 +55,13 @@ async function createTestUsers() {
         email: 'reviewer@vertcorps.com',
         password: hashedPassword,
         role: 'reviewer',
+        district: null
+      },
+      {
+        name: 'Read Only User',
+        email: 'readonly@vertcorps.com',
+        password: hashedPassword,
+        role: 'viewer',
         district: null
       }
     ]);

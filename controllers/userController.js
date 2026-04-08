@@ -84,11 +84,11 @@ exports.updateUserRole = async (req, res) => {
     const { role } = req.body;
 
     // Validate role
-    const validRoles = ['admin', 'reviewer', 'district_EDO'];
+    const validRoles = ['admin', 'reviewer', 'district_EDO', 'viewer'];
     if (!validRoles.includes(role)) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid role. Must be: admin, reviewer, or district_EDO'
+        message: 'Invalid role. Must be: admin, reviewer, district_EDO, or viewer'
       });
     }
 
