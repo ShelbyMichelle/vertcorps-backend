@@ -1,5 +1,13 @@
-// models/User.js
+﻿// models/User.js
 module.exports = (sequelize, DataTypes) => {
+  const {
+    ROLE_ADMIN,
+    ROLE_DISTRICT_EDO_LEGACY,
+    ROLE_ENVIRONMENTAL_DISTRICT_OFFICER,
+    ROLE_REVIEWER,
+    ROLE_VIEWER,
+  } = require('../utils/roles');
+
   const User = sequelize.define('User', {
     id: {
       type: DataTypes.INTEGER,
@@ -23,7 +31,13 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: false
     },
     role: {
-      type: DataTypes.ENUM('admin', 'district_EDO', 'reviewer', 'viewer'),
+      type: DataTypes.ENUM(
+        ROLE_ADMIN,
+        ROLE_DISTRICT_EDO_LEGACY,
+        ROLE_ENVIRONMENTAL_DISTRICT_OFFICER,
+        ROLE_REVIEWER,
+        ROLE_VIEWER,
+      ),
       allowNull: false
     },
     district: {
@@ -35,7 +49,7 @@ module.exports = (sequelize, DataTypes) => {
     timestamps: true
   });
 
-  // ✅ Associations
+  // âœ… Associations
   User.associate = (models) => {
     User.hasMany(models.AuditLog, {
       foreignKey: 'user_id',
@@ -61,5 +75,6 @@ module.exports = (sequelize, DataTypes) => {
     });
   };
 
-  return User; // 🔴 REQUIRED
+  return User; // ðŸ”´ REQUIRED
 };
+

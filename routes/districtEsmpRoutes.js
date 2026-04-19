@@ -1,16 +1,17 @@
-// routes/districtEsmpRoutes.js
+﻿// routes/districtEsmpRoutes.js
 const express = require('express');
 const router = express.Router();
 const controller = require('../controllers/districtEsmpController');
 const auth = require('../middleware/auth');
 const role = require('../middleware/role');
 const upload = require('../middleware/upload');
+const { DISTRICT_EDO_ROLES } = require('../utils/roles');
 
 // District EDO routes
 router.post(
   '/submit',
   auth,
-  role('district_EDO'), // Changed from 'district' to match your user type
+  role(...DISTRICT_EDO_ROLES), // Changed from 'district' to match your user type
   upload.single('esmp_file'),
   controller.submitEsmp
 );
@@ -18,28 +19,28 @@ router.post(
 router.get(
   '/my-esmps',
   auth,
-  role('district_EDO'),
+  role(...DISTRICT_EDO_ROLES),
   controller.getMyEsmps
 );
 
 router.get(
   '/dashboard-stats',
   auth,
-  role('district_EDO'),
+  role(...DISTRICT_EDO_ROLES),
   controller.getDashboardStats
 );
 
 router.get(
   '/:id',
   auth,
-  role('district_EDO'),
+  role(...DISTRICT_EDO_ROLES),
   controller.getSingleEsmp
 );
 
 router.put(
   '/resubmit/:id',
   auth,
-  role('district_EDO'),
+  role(...DISTRICT_EDO_ROLES),
   upload.single('esmp_file'),
   controller.resubmitEsmp
 );
@@ -47,5 +48,6 @@ router.put(
 module.exports = router;
 
 // =====================================
+
 
 

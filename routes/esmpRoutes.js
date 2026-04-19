@@ -1,4 +1,4 @@
-// routes/esmpRoutes.js
+﻿// routes/esmpRoutes.js
 const express = require('express');
 const router = express.Router();
 
@@ -55,11 +55,11 @@ router.put(
   adminController.assignReviewer
 );
 
-// GET /api/esmp/reviewers     → List of reviewers (still useful for admin dropdown, but move to admin if preferred)
+// GET /api/esmp/reviewers     → List of reviewers (admin + viewer read-only)
 router.get(
   '/reviewers',
   auth,
-  role('admin'),
+  role('admin', 'viewer'),
   esmpController.getReviewers
 );
 

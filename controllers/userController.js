@@ -1,8 +1,22 @@
-//controllers/userController.js
+﻿//controllers/userController.js
 
 const db = require('../models');
 const User = db.User;
 const bcrypt = require('bcryptjs');
+const {
+  ROLE_ADMIN,
+  ROLE_REVIEWER,
+  ROLE_VIEWER,
+  ROLE_ENVIRONMENTAL_DISTRICT_OFFICER,
+  normalizeRole,
+} = require('../utils/roles');
+
+const validRoles = [
+  ROLE_ADMIN,
+  ROLE_REVIEWER,
+  ROLE_ENVIRONMENTAL_DISTRICT_OFFICER,
+  ROLE_VIEWER,
+];
 
 // Get all users (Admin only)
 exports.getAllUsers = async (req, res) => {
@@ -26,6 +40,7 @@ exports.getAllUsers = async (req, res) => {
 exports.addUser = async (req, res) => {
   try {
     const { name, email, password, role, district } = req.body;
+    const nextRole = normalizeRole(role);
 
     // Validate input
     if (!name || !email || !password || !role) {
@@ -47,12 +62,20 @@ exports.addUser = async (req, res) => {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    // Validate role
+    if (!validRoles.includes(nextRole)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid role. Must be: ' + validRoles.join(', '),
+      });
+    }
+
     // Create user
     const user = await User.create({
       name,
       email: email.toLowerCase(),
       password: hashedPassword,
-      role,
+      role: nextRole,
       district: district || null
     });
 
@@ -84,11 +107,11 @@ exports.updateUserRole = async (req, res) => {
     const { role } = req.body;
 
     // Validate role
-    const validRoles = ['admin', 'reviewer', 'district_EDO', 'viewer'];
-    if (!validRoles.includes(role)) {
+    const nextRole = normalizeRole(role);
+    if (!validRoles.includes(nextRole)) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid role. Must be: admin, reviewer, district_EDO, or viewer'
+        message: 'Invalid role. Must be: ' + validRoles.join(', '),
       });
     }
 
@@ -110,7 +133,7 @@ exports.updateUserRole = async (req, res) => {
     }
 
     // Update role
-    user.role = role;
+    user.role = nextRole;
     await user.save();
 
     res.json({
@@ -235,5 +258,51 @@ exports.resetPassword = async (req, res) => {
     });
   }
 };
+
+// Update current user's profile (name/email)
+exports.updateMe = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { name, email } = req.body || {};
+
+    if (!name || !String(name).trim()) {
+      return res.status(400).json({ success: false, message: "Name is required" });
+    }
+
+    if (!email || !String(email).trim()) {
+      return res.status(400).json({ success: false, message: "Email is required" });
+    }
+
+    const nextEmail = String(email).trim().toLowerCase();
+    const nextName = String(name).trim();
+
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    if (nextEmail !== user.email) {
+      const existingUser = await User.findOne({ where: { email: nextEmail } });
+      if (existingUser && existingUser.id !== userId) {
+        return res.status(400).json({ success: false, message: "Email is already in use" });
+      }
+    }
+
+    user.name = nextName;
+    user.email = nextEmail;
+    await user.save();
+
+    res.json({
+      success: true,
+      message: "Profile updated",
+      user: { id: user.id, name: user.name, email: user.email, role: user.role, district: user.district },
+    });
+  } catch (err) {
+    console.error("Update profile error:", err);
+    res.status(500).json({ success: false, message: "Failed to update profile" });
+  }
+};
 // Don't forget to export it at the bottom of the file
 module.exports = exports;
+
+

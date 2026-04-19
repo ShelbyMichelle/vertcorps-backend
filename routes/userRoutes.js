@@ -24,4 +24,7 @@ router.delete('/:id', auth, role('admin'), userController.deleteUser);
 // PUT /api/users/reset-password
 router.put('/reset-password', auth, userController.resetPassword);
 
+// PUT /api/users/me
+router.put('/me', auth, userController.updateMe);
+
 module.exports = router;

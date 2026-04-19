@@ -1,4 +1,4 @@
-const { EsmpDistrictUpload, User, Review, Notification, sequelize } = require('../models');
+﻿const { EsmpDistrictUpload, User, Review, Notification, sequelize } = require('../models');
 const { Op } = require('sequelize');
 
 // Helper functions (unchanged)
@@ -275,17 +275,21 @@ exports.getReviewerDashboardStats = async (req, res) => {
 };
 
 // ==============================
-// GET ALL REVIEWERS (Admin only)
+// GET ALL REVIEWERS (Admin + Viewer)
 // ==============================
 exports.getReviewers = async (req, res) => {
   try {
-    if (req.user.role !== 'admin') {
+    if (!['admin', 'viewer'].includes(req.user.role)) {
       return errorResponse(res, 'Access denied', 403);
     }
 
+    const attributes = req.user.role === 'admin'
+      ? ['id', 'name', 'email']
+      : ['id', 'name'];
+
     const reviewers = await User.findAll({
       where: { role: 'reviewer' },
-      attributes: ['id', 'name', 'email'],
+      attributes,
       order: [['name', 'ASC']],
     });
 
@@ -294,7 +298,6 @@ exports.getReviewers = async (req, res) => {
     errorResponse(res, 'Failed to fetch reviewers', 500, err);
   }
 };
-
 // ==============================
 // GET ADMIN DASHBOARD STATS
 // ==============================
@@ -330,3 +333,4 @@ exports.getAdminDashboardStats = async (req, res) => {
     errorResponse(res, 'Failed to fetch admin dashboard statistics', 500, err);
   }
 };
+

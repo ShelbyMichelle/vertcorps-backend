@@ -1,4 +1,4 @@
-require('dotenv').config();
+﻿require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -39,22 +39,22 @@ socketService.setIO(io);
 io.on('connection', (socket) => {
   const { userId, role } = socket.handshake.auth;
 
-  console.log('🔌 New socket connection:', { socketId: socket.id, auth: socket.handshake.auth });
+  console.log('ðŸ”Œ New socket connection:', { socketId: socket.id, auth: socket.handshake.auth });
 
   if (!userId) {
-    console.log('❌ Socket connection rejected (no userId)');
+    console.log('âŒ Socket connection rejected (no userId)');
     return socket.disconnect();
   }
 
   socket.join(`user_${userId}`);
-  console.log(`🔌 User ${userId} connected via socket (${role}) — socketId: ${socket.id}`);
+  console.log(`ðŸ”Œ User ${userId} connected via socket (${role}) â€” socketId: ${socket.id}`);
 
   socket.on('disconnect', () => {
-    console.log(`🔌 User ${userId} disconnected`);
+    console.log(`ðŸ”Œ User ${userId} disconnected`);
   });
 });
 
-// 🔔 Make io accessible in routes (VERY IMPORTANT)
+// ðŸ”” Make io accessible in routes (VERY IMPORTANT)
 app.set('io', io);
 
 // =======================================================
@@ -75,7 +75,7 @@ app.use(cors({
     if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      console.log('❌ CORS blocked origin:', origin);
+      console.log('âŒ CORS blocked origin:', origin);
       callback(new Error('CORS policy blocked this origin'), false);
     }
   },
@@ -111,6 +111,7 @@ app.use('/api/reviewer', require('./routes/reviewerRoutes'));
 app.use('/api/statistics', require('./routes/statisticsRoutes'));
 app.use('/api/admin', require('./routes/adminRoutes'));
 app.use('/api/district', require('./routes/districtEsmpRoutes'));
+app.use('/api/support', require('./routes/supportRoutes'));
 
 // =======================================================
 // HEALTH CHECK
@@ -150,7 +151,7 @@ app.post('/api/esmp/upload', upload.array('files'), async (req, res) => {
 
     await EsmpDistrictUpload.bulkCreate(records);
 
-    res.json({ success: true, message: '✅ ESMP uploaded successfully' });
+    res.json({ success: true, message: 'âœ… ESMP uploaded successfully' });
   } catch (err) {
     console.error(err);
     res.status(500).json({ success: false, message: 'Upload error' });
@@ -173,10 +174,10 @@ app.use((err, req, res, next) => {
 // =======================================================
 sequelize.sync({ alter: true })
   .then(async () => {
-    console.log('✅ Database synced');
+    console.log('âœ… Database synced');
 
     const userCount = await User.count();
-    console.log(`👥 Users in database: ${userCount}`);
+    console.log(`ðŸ‘¥ Users in database: ${userCount}`);
 
     if (userCount === 0) {
       const bcrypt = require('bcryptjs');
@@ -184,19 +185,20 @@ sequelize.sync({ alter: true })
 
       await User.bulkCreate([
         { name: 'Admin User', email: 'admin@vertcorps.com', password: hashedPassword, role: 'admin' },
-        { name: 'District EDO Lilongwe', email: 'edo.lilongwe@vertcorps.com', password: hashedPassword, role: 'district_EDO', district: 'Lilongwe' },
-        { name: 'District EDO Blantyre', email: 'edo.blantyre@vertcorps.com', password: hashedPassword, role: 'district_EDO', district: 'Blantyre' },
+        { name: 'Environmental District Officer Lilongwe', email: 'edo.lilongwe@vertcorps.com', password: hashedPassword, role: 'Environmental District Officer', district: 'Lilongwe' },
+        { name: 'Environmental District Officer Blantyre', email: 'edo.blantyre@vertcorps.com', password: hashedPassword, role: 'Environmental District Officer', district: 'Blantyre' },
         { name: 'Reviewer User', email: 'reviewer@vertcorps.com', password: hashedPassword, role: 'reviewer' },
       ]);
 
-      console.log('✅ Default users created');
+      console.log('âœ… Default users created');
     }
 
-    // 🚀 IMPORTANT: Use server.listen (not app.listen)
+    // ðŸš€ IMPORTANT: Use server.listen (not app.listen)
     server.listen(PORT, () => {
-      console.log(`🚀 Server running on port ${PORT}`);
+      console.log(`ðŸš€ Server running on port ${PORT}`);
     });
   })
   .catch((err) => {
-    console.error('❌ Database sync failed:', err);
+    console.error('âŒ Database sync failed:', err);
   });
+
