@@ -23,6 +23,7 @@ router.post("/upload", upload.array("files"), async (req, res) => {
       subproject,
       coordinates,
       sector,
+      risk_rating,
       cycle,
       funding
     } = req.body;
@@ -39,6 +40,7 @@ router.post("/upload", upload.array("files"), async (req, res) => {
         subproject,
         coordinates,
         sector,
+        risk_rating,
         cycle,
         funding_component: funding,
         file_name: file.originalname,

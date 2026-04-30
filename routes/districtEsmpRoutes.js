@@ -37,6 +37,13 @@ router.get(
   controller.getSingleEsmp
 );
 
+router.get(
+  '/:id/download',
+  auth,
+  role(...DISTRICT_EDO_ROLES),
+  controller.downloadEsmpFile
+);
+
 router.put(
   '/resubmit/:id',
   auth,

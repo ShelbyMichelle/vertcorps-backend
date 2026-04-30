@@ -38,6 +38,14 @@ router.get(
   esmpController.getReviewerDashboardStats
 );
 
+// GET /api/esmp/:id/download → Download ESMP file (admin + viewer)
+router.get(
+  '/:id/download',
+  auth,
+  role('admin', 'viewer'),
+  esmpController.downloadEsmpFile
+);
+
 // PUT /api/esmp/review/:esmpId → Submit review + optional file
 router.put(
   '/review/:esmpId',

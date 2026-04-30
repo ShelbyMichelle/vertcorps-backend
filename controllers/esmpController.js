@@ -1,5 +1,7 @@
 ﻿const { EsmpDistrictUpload, User, Review, Notification, sequelize } = require('../models');
 const { Op } = require('sequelize');
+const fs = require('fs');
+const path = require('path');
 
 // Helper functions (unchanged)
 const successResponse = (res, data, message = 'Success', status = 200) => {
@@ -122,6 +124,31 @@ exports.getMyAssignedEsmps = async (req, res) => {
     successResponse(res, esmps);
   } catch (err) {
     errorResponse(res, 'Failed to fetch your assigned ESMPs', 500, err);
+  }
+};
+
+// ==============================
+// DOWNLOAD ESMP FILE (Admin + Viewer)
+// ==============================
+exports.downloadEsmpFile = async (req, res) => {
+  try {
+    if (!['admin', 'viewer'].includes(req.user.role)) {
+      return errorResponse(res, 'Access denied', 403);
+    }
+
+    const esmp = await EsmpDistrictUpload.findByPk(req.params.id);
+    if (!esmp) {
+      return errorResponse(res, 'ESMP not found', 404);
+    }
+
+    const filePath = path.resolve(esmp.file_path);
+    if (!fs.existsSync(filePath)) {
+      return errorResponse(res, 'File not found on server', 404);
+    }
+
+    return res.download(filePath, esmp.file_name || path.basename(filePath));
+  } catch (err) {
+    errorResponse(res, 'Failed to download file', 500, err);
   }
 };
 
@@ -333,4 +360,3 @@ exports.getAdminDashboardStats = async (req, res) => {
     errorResponse(res, 'Failed to fetch admin dashboard statistics', 500, err);
   }
 };
-

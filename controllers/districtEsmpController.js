@@ -1,7 +1,7 @@
 // controllers/districtEsmpController.js
 const path = require('path');
 const fs = require('fs');
-const { EsmpDistrictUpload, Notification, User } = require('../models');
+const { EsmpDistrictUpload, Notification, User, Review } = require('../models');
 const { Op } = require('sequelize');
 
 // Keep overdue status in sync with deadlines.
@@ -28,6 +28,7 @@ exports.submitEsmp = async (req, res) => {
       subproject,
       coordinates,
       sector,
+      risk_rating,
       cycle,
       funding_component
     } = req.body;
@@ -52,6 +53,7 @@ exports.submitEsmp = async (req, res) => {
       subproject,
       coordinates,
       sector,
+      risk_rating,
       cycle,
       funding_component,
       submitted_by: req.user.id,
@@ -115,11 +117,36 @@ exports.getMyEsmps = async (req, res) => {
           model: User,
           as: 'User',
           attributes: ['id', 'name', 'email']
+        },
+        {
+          model: Review,
+          include: [
+            {
+              model: User,
+              attributes: ['id', 'name', 'email']
+            }
+          ],
+          order: [['createdAt', 'DESC']]
         }
       ]
     });
 
-    res.json({ success: true, data: esmps });
+    // Add review_comments from the latest review for frontend compatibility
+    const esmpsWithComments = esmps.map(esmp => {
+      const esmpData = esmp.toJSON();
+      if (esmpData.Reviews && esmpData.Reviews.length > 0) {
+        // Get the latest review (assuming ordered by createdAt desc)
+        const latestReview = esmpData.Reviews[esmpData.Reviews.length - 1];
+        esmpData.review_comments = latestReview.comment;
+        esmpData.reviewer_name = latestReview.User?.name;
+      } else {
+        esmpData.review_comments = null;
+        esmpData.reviewer_name = null;
+      }
+      return esmpData;
+    });
+
+    res.json({ success: true, data: esmpsWithComments });
   } catch (err) {
     console.error('Error fetching ESMPs:', err);
     res.status(500).json({ 
@@ -145,6 +172,16 @@ exports.getSingleEsmp = async (req, res) => {
           model: User,
           as: 'User',
           attributes: ['id', 'name', 'email']
+        },
+        {
+          model: Review,
+          include: [
+            {
+              model: User,
+              attributes: ['id', 'name', 'email']
+            }
+          ],
+          order: [['createdAt', 'DESC']]
         }
       ]
     });
@@ -163,6 +200,44 @@ exports.getSingleEsmp = async (req, res) => {
       success: false,
       message: 'Failed to fetch ESMP',
       error: err.message 
+    });
+  }
+};
+
+// ==============================
+// DOWNLOAD MY ESMP FILE (DISTRICT)
+// ==============================
+exports.downloadEsmpFile = async (req, res) => {
+  try {
+    const esmp = await EsmpDistrictUpload.findOne({
+      where: {
+        id: req.params.id,
+        submitted_by: req.user.id
+      }
+    });
+
+    if (!esmp) {
+      return res.status(404).json({
+        success: false,
+        message: 'ESMP not found'
+      });
+    }
+
+    const filePath = path.resolve(esmp.file_path);
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({
+        success: false,
+        message: 'File not found on server'
+      });
+    }
+
+    return res.download(filePath, esmp.file_name || path.basename(filePath));
+  } catch (err) {
+    console.error('Error downloading ESMP:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to download ESMP',
+      error: err.message
     });
   }
 };

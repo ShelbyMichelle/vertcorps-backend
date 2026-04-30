@@ -161,6 +161,7 @@ exports.getSubmittedEsmps = async (req, res) => {
         'subproject',
         'coordinates',
         'sector',
+        'risk_rating',
         'cycle',
         'funding_component',
         'status',

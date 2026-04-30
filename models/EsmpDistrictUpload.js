@@ -16,6 +16,7 @@ module.exports = (sequelize, DataTypes) => {
     subproject: DataTypes.STRING,
     coordinates: DataTypes.STRING,
     sector: DataTypes.STRING,
+    risk_rating: DataTypes.STRING,
     cycle: DataTypes.STRING,
     funding_component: DataTypes.STRING,
     status: {
